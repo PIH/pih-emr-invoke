@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import getpass
 import os
 from invoke import task
 
@@ -9,12 +10,20 @@ SERVER_NAME = "chiapas"
 
 @task
 def setup(ctx):
+    pswd = getpass.getpass("database root password:")
     cmd = "mvn openmrs-sdk:setup -DserverId=" + SERVER_NAME + " " \
           "-Ddistro=org.openmrs.module:mirebalais:1.2-SNAPSHOT " \
-          "-DdbUri=jdbc:mysql://localhost:3306/openmrs_chiapas " \
-          "-DdbUser=root -DdbPassword='asdf;lkj'"
+          "-DdbUri=jdbc:mysql://localhost:3306/openmrs_" + SERVER_NAME + \
+          " -DdbUser=root -DdbPassword='" + pswd + "'"
     with ctx.cd(BASE_PATH):
         ctx.run(cmd)
+    print("Next steps:\n"
+            "  invoke run\n"
+            "  chromium http://localhost:8080\n"
+            "  # ctrl-c out of the 'invoke run' when the database update completes\n"
+            "  invoke configure\n"
+            "  invoke run\n"
+            "  chromium http://localhost:8080/openmrs/login.htm")
 
 @task
 def configure(ctx):
