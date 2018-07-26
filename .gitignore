@@ -1,0 +1,4 @@
+openmrs-module-*
+mirebalais-puppet/
+distro/ubuntuiso/
+distro/*.iso
