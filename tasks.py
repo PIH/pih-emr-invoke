@@ -17,13 +17,6 @@ def setup(ctx):
           " -DdbUser=root -DdbPassword='" + pswd + "'"
     with ctx.cd(BASE_PATH):
         ctx.run(cmd)
-    print("Next steps:\n"
-            "  invoke run\n"
-            "  chromium http://localhost:8080\n"
-            "  # ctrl-c out of the 'invoke run' when the database update completes\n"
-            "  invoke configure\n"
-            "  invoke run\n"
-            "  chromium http://localhost:8080/openmrs/login.htm")
 
 @task
 def configure(ctx):
