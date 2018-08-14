@@ -1,4 +1,7 @@
 #! /usr/bin/env jython 
+#
+# Largely based on https://gist.github.com/shapr/507bcbf3e8cfdc5d3549
+#
 
 import sys
 sys.path.append('jackcess-2.1.12.jar') # assume the jackcess is in the same directory
