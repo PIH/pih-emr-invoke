@@ -54,6 +54,14 @@ def install(ctx):
     ctx.run(cmd)
 
 @task
+def deploy(ctx):
+    """Runs Maven deploy for Mirebalais. Updates dependencies."""
+    with ctx.cd(BASE_PATH + '/openmrs-module-mirebalais'):
+        cmd = "mvn openmrs-sdk:deploy -Ddistro=api/src/main/resources/openmrs-distro.properties -U"
+        ctx.run(cmd)
+
+
+@task
 def pull(ctx):
     cmd = "mvn openmrs-sdk:pull"
     ctx.run(cmd)
