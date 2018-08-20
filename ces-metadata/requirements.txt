@@ -1,2 +1,3 @@
 fuzzywuzzy[speedup]
 pylint
+tqdm
