@@ -18,35 +18,35 @@ from tqdm import tqdm
 
 MODE = None  # set to 'ces' or 'ssa' at runtime
 
-SSA_CSV = "./input/meds-ssa.csv"
-CES_CSV = "./input/meds-ces.csv"
-HUM_CSV = "./input/HUM_Drug_List-13.csv"
-CIEL_JSON = "./input/meds-ciel.json"
+SSA_CSV = os.path.join("input", "meds-ssa.csv")
+CES_CSV = os.path.join("input", "meds-ces.csv")
+HUM_CSV = os.path.join("input", "HUM_Drug_List-13.csv")
+CIEL_JSON = os.path.join("input", "meds-ciel.json")
 
 
 # We're going to define a bunch of filename constants that use the runtime global MODE
 # using partial function application. Those constants should be used as nullary functions.
-def csv_filename(format_string):
-    return format_string.format(MODE)
+def csv_filename(folder, format_string):
+    return os.path.join(folder, format_string.format(MODE))
 
 
-MATCHES_HUM_AUTO_CSV = partial(csv_filename, "./output/meds-matches-hum-auto-{}.csv")
+MATCHES_HUM_AUTO_CSV = partial(csv_filename, "output", "meds-matches-hum-auto-{}.csv")
 UNMATCHED_HUM_AUTO_CSV = partial(
-    csv_filename, "./intermediates/no-match-hum-auto-{}.csv"
+    csv_filename, "intermediates", "no-match-hum-auto-{}.csv"
 )
-MATCHES_CIEL_AUTO_CSV = partial(csv_filename, "./output/meds-matches-ciel-auto-{}.csv")
+MATCHES_CIEL_AUTO_CSV = partial(csv_filename, "output", "meds-matches-ciel-auto-{}.csv")
 UNMATCHED_CIEL_AUTO_CSV = partial(
-    csv_filename, "./intermediates/no-match-ciel-auto-{}.csv"
+    csv_filename, "intermediates", "no-match-ciel-auto-{}.csv"
 )
 
 CHOICE_MATCHES_INTERMEDIATE_CSV = partial(
-    csv_filename, "./intermediates/choice-matches-{}.csv"
+    csv_filename, "intermediates", "choice-matches-{}.csv"
 )
-MATCHES_CHOICE_CSV = partial(csv_filename, "./output/meds-matches-choice-{}.csv")
+MATCHES_CHOICE_CSV = partial(csv_filename, "output", "meds-matches-choice-{}.csv")
 UNMATCHED_CHOICE_INTERMEDIATE_CSV = partial(
-    csv_filename, "./intermediates/no-match-choice-{}.csv"
+    csv_filename, "intermediates", "no-match-choice-{}.csv"
 )
-UNMATCHED_CSV = partial(csv_filename, "./ouput/meds-unmatched-{}.csv")
+UNMATCHED_CSV = partial(csv_filename, "ouput", "meds-unmatched-{}.csv")
 
 HUM_MATCH_SCORE_LIMIT = 80
 CIEL_MATCH_SCORE_LIMIT = 70
@@ -60,6 +60,7 @@ def main():
     elif MODE == "ces":
         ces_csv = clean_csv_list(csv_as_list(CES_CSV))
         input_data = [("-", l[0], "-", clean_ces_drug_name(l[0])) for l in ces_csv]
+
     hum_csv = clean_csv_list(csv_as_list(HUM_CSV))
     ciel_data = from_json_file(CIEL_JSON)
 
@@ -67,8 +68,10 @@ def main():
     if os.path.isfile(MATCHES_HUM_AUTO_CSV()) and os.path.isfile(
         UNMATCHED_HUM_AUTO_CSV()
     ):
-        print("\nAutomatic matches from HUM found in " + MATCHES_HUM_AUTO_CSV() + "and")
-        print("Unmatched after HUM auto found in " + UNMATCHED_HUM_AUTO_CSV())
+        print(
+            "\nAutomatic matches from HUM found in " + MATCHES_HUM_AUTO_CSV() + " and"
+        )
+        print("unmatched after HUM auto found in " + UNMATCHED_HUM_AUTO_CSV())
         skipped_hum_auto = True
     else:
         print("\nExtracting good matches from HUM...")
@@ -80,9 +83,9 @@ def main():
     skipped_ciel_auto = False
     if os.path.isfile(MATCHES_CIEL_AUTO_CSV()):
         print(
-            "\nAutomatic matches from CIEL found in " + MATCHES_CIEL_AUTO_CSV() + "and"
+            "\nAutomatic matches from CIEL found in " + MATCHES_CIEL_AUTO_CSV() + " and"
         )
-        print("Unmatched after CIEL auto found in " + UNMATCHED_CIEL_AUTO_CSV())
+        print("unmatched after CIEL auto found in " + UNMATCHED_CIEL_AUTO_CSV())
         skipped_ciel_auto = True
     else:
         print("\nExtracting good matches from CIEL...")
