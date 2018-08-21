@@ -117,7 +117,7 @@ def main():
 
 def extract_good_matches_hum(input_data, hum_csv):
     """
-     Args:
+    Args:
         input_data (list): [ssa_code, ssa_name, moa, clean_ssa_name]
         hum_csv (list): The HUM_Drug_List CSV file as a list
 
