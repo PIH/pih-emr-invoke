@@ -1,4 +1,18 @@
-Diagnosis data extracted from PIH concept server with
+Diagnosis ICD-10 codes can be extracted with
+
+```
+SELECT crm.concept_id, crt.code
+FROM concept_reference_term AS crt
+INNER JOIN concept_reference_map as crm
+    ON crm.concept_reference_term_id=crt.concept_reference_term_id
+WHERE crm.concept_map_type_id=2
+    AND crt.code LIKE '___._'
+GROUP BY crm.concept_id
+INTO OUTFILE '/var/lib/mysql-files/bistenes-ciel-icd-3dig.csv'
+FIELDS TERMINATED BY ',' ENCLOSED BY '"' LINES TERMINATED BY '\n';
+```
+
+Diagnosis names can be extracted with
 
 ```
 SELECT cn.concept_id, cn.name, cn.locale, crt.code
