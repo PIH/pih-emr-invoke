@@ -2,24 +2,11 @@
 
 import getpass
 import os
-import re
-from invoke import task, watchers
+from invoke import task
 
 BASE_PATH = os.path.dirname(os.path.realpath(__file__))
 
 SERVER_NAME = "chiapas"
-
-
-class AlertWatcher(watchers.StreamWatcher):
-    def __init__(self, pattern):
-        self.pattern = pattern
-
-    def submit(self, stream_data):
-        # Search, across lines if necessary
-        matches = re.findall(self.pattern, stream_data, re.S)
-        if matches:
-            print("FOUND A MATCH, TEXTING!!!!")
-            os.system('textme "OpenMRS is running"')
 
 
 @task
@@ -60,22 +47,14 @@ def configure(ctx):
 @task
 def run(ctx):
     """Runs OpenMRS"""
-    watcher = AlertWatcher(r"Apache Maven")
-    # watcher = AlertWatcher(r"Checking if port 8080 is in use... \[free\]")
     cmd = (
         "mvn openmrs-sdk:run -e -X -DserverId="
         + SERVER_NAME
-        + " 2>&1 "
         + " | tee /dev/tty"
-        + " | awk '/org.apache.coyote.AbstractProtocol start/ { system(\"textme OpenMRS\") }'"
-        # + " | awk '/Starting ProtocolHandler/ { system(\"textme OpenMRS\") }'"
-        # + " | awk '/platform encoding: UTF-8/ { system(\"textme UTF\") }'"
-        # + ' | awk \'/OS name: "linux"/ { system("textme openmrs") }\''
-        # + " | awk '/Checking if port 8080 is in use... \[free\]/ { system(\"textme openmrs\") }'"
-        # + " | awk '/Apache Maven 3.5.2/ { system(\"textme\") }'"
+        + " | awk -Winteractive '/Starting ProtocolHandler/ { system(\"textme OpenMRS is ready\") }'"
     )
     with ctx.cd(BASE_PATH):
-        ctx.run(cmd, watchers=[watcher])
+        ctx.run(cmd, pty=True)
 
 
 @task
