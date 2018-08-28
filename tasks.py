@@ -51,7 +51,8 @@ def run(ctx):
         "mvn openmrs-sdk:run -e -X -DserverId="
         + SERVER_NAME
         + " | tee /dev/tty"
-        + " | awk -Winteractive '/Starting ProtocolHandler/ { system(\"textme OpenMRS is ready\") }'"
+        + ' | awk -Winteractive \'/Starting ProtocolHandler/ { system("textme OpenMRS is ready") }'
+        + '                      /Connect remote debugger/ { system("notify-send debugger") }\''
     )
     with ctx.cd(BASE_PATH):
         ctx.run(cmd, pty=True)
