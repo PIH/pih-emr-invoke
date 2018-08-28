@@ -42,11 +42,15 @@ UNMATCHED_CIEL_AUTO_CSV = partial(
 CHOICE_MATCHES_INTERMEDIATE_CSV = partial(
     csv_filename, "intermediates", "choice-matches-{}.csv"
 )
-MATCHES_CHOICE_CSV = partial(csv_filename, "output", "meds-matches-choice-{}.csv")
-UNMATCHED_CHOICE_INTERMEDIATE_CSV = partial(
-    csv_filename, "intermediates", "no-match-choice-{}.csv"
+CHOICE_TODO_INTERMEDIATE_CSV = partial(
+    csv_filename, "intermediates", "choice-todo-{}.csv"
 )
-UNMATCHED_CSV = partial(csv_filename, "ouput", "meds-unmatched-{}.csv")
+CHOICE_UNMATCHED_INTERMEDIATE_CSV = partial(
+    csv_filename, "intermediates", "choice-unmatched-{}.csv"
+)
+
+MATCHES_CHOICE_CSV = partial(csv_filename, "output", "meds-matches-choice-{}.csv")
+UNMATCHED_CSV = partial(csv_filename, "output", "meds-unmatched-{}.csv")
 
 HUM_MATCH_SCORE_LIMIT = 80
 CIEL_MATCH_SCORE_LIMIT = 70
@@ -98,17 +102,26 @@ def main():
 
     print("\nOkay, now to sort through the remaining drugs.")
     print("Always prefer one of the first two matches, if it's good.")
-    if os.path.isfile(UNMATCHED_CHOICE_INTERMEDIATE_CSV()):
-        unmatched_lines = csv_as_list(UNMATCHED_CHOICE_INTERMEDIATE_CSV())
+    if os.path.isfile(CHOICE_TODO_INTERMEDIATE_CSV()):
+        unmatched_lines = csv_as_list(CHOICE_TODO_INTERMEDIATE_CSV())
         print(
-            "Found work-in-progress, importing from "
-            + UNMATCHED_CHOICE_INTERMEDIATE_CSV()
+            "Found work-in-progress, importing from " + CHOICE_TODO_INTERMEDIATE_CSV()
         )
     elif skipped_ciel_auto:
         unmatched_lines = csv_as_list(UNMATCHED_CIEL_AUTO_CSV())
+    starting_choice_matches = (
+        csv_as_list(CHOICE_MATCHES_INTERMEDIATE_CSV())
+        if os.path.isfile(CHOICE_MATCHES_INTERMEDIATE_CSV())
+        else []
+    )
+    starting_no_match = (
+        csv_as_list(CHOICE_UNMATCHED_INTERMEDIATE_CSV())
+        if os.path.isfile(CHOICE_UNMATCHED_INTERMEDIATE_CSV())
+        else []
+    )
     print(str(len(unmatched_lines)) + " " + MODE + " drugs left to sort.\n")
     matches, unmatched_lines = extract_user_chosen_matches(
-        unmatched_lines, hum_csv, ciel_data
+        unmatched_lines, hum_csv, ciel_data, starting_choice_matches, starting_no_match
     )
     save_matches_and_unmatched(
         matches, unmatched_lines, MATCHES_CHOICE_CSV(), UNMATCHED_CSV()
@@ -190,12 +203,16 @@ def extract_good_matches_ciel(input_data, ciel_data):
     return good_matches_formatted, ssa_remainder
 
 
-def extract_user_chosen_matches(input_data, hum_csv, ciel_data):
+def extract_user_chosen_matches(input_data, hum_csv, ciel_data, matches, no_match):
     """
      Args:
         input_data (list): [ssa_code, ssa_name, moa, clean_ssa_name]
         hum_csv (list): The HUM_Drug_List CSV file as a list
         ciel_data (list): The ciel json as a list
+        matches (list): [ssa_code, ssa_name, moa, concept_code, clean_hum_name]
+            The matches from a previous run
+        no_match (list): [ssa_code, ssa_name, moa, clean_ssa_name]
+            The items that in a previous run were identified as not having a match
 
     Returns:
         matches: [ssa_code, ssa_name, moa, concept_code, clean_hum_name]
@@ -217,8 +234,6 @@ def extract_user_chosen_matches(input_data, hum_csv, ciel_data):
         for i in ciel_data
     }
 
-    # [ssa_code, ssa_name, moa, concept_code, clean_other_name]
-    choice_matches = []
     for ssa_linenum, ssa_line in enumerate(input_data):
         print(ssa_line[1])
         print("0) None of these")
@@ -266,19 +281,20 @@ def extract_user_chosen_matches(input_data, hum_csv, ciel_data):
         ):
             choice = ciel_matches[choice_num - (HUM_MATCH_LIMIT + 1)]
         if choice:
-            choice_matches.append(
+            # [ssa_code, ssa_name, moa, concept_code, clean_other_name]
+            matches.append(
                 [ssa_line[0], ssa_line[1], ssa_line[2], choice[2], choice[0], "-"]
             )
             print("chose {}".format(choice))
-            write_to_csv(choice_matches, CHOICE_MATCHES_INTERMEDIATE_CSV())
-        print("writing unmatched " + str(len(input_data[ssa_linenum:])))
-        write_to_csv(input_data[ssa_linenum + 1 :], UNMATCHED_CHOICE_INTERMEDIATE_CSV())
+            write_to_csv(matches, CHOICE_MATCHES_INTERMEDIATE_CSV())
+        else:
+            print("writing unmatched " + str(len(input_data[ssa_linenum:])))
+            no_match.append(ssa_line)
+            write_to_csv(no_match, CHOICE_UNMATCHED_INTERMEDIATE_CSV())
+        print("writing remaining " + str(len(input_data[ssa_linenum:])))
+        write_to_csv(input_data[ssa_linenum + 1 :], CHOICE_TODO_INTERMEDIATE_CSV())
         print()
-    # [clean_ssa_name]
-    matched_clean_ssa_names = [l[1] for l in choice_matches]
-    # [ssa_code, ssa_name, moa, clean_ssa_name]
-    ssa_remainder = [l for l in input_data if l[3] not in matched_clean_ssa_names]
-    return choice_matches, ssa_remainder
+    return matches, no_match
 
 
 def save_matches_and_unmatched(
