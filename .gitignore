@@ -3,3 +3,4 @@ mirebalais-puppet/
 distro/ubuntuiso/
 distro/*.iso
 env/
+*.pyc
