@@ -7,22 +7,7 @@ from invoke import task
 BASE_PATH = os.path.dirname(os.path.realpath(__file__))
 
 SERVER_NAME = "chiapas"
-
-
-@task
-def setup(ctx):
-    pswd = getpass.getpass("database root password:")
-    cmd = (
-        "mvn openmrs-sdk:setup -DserverId=" + SERVER_NAME + " "
-        "-Ddistro=org.openmrs.module:mirebalais:1.2-SNAPSHOT "
-        "-DdbUri=jdbc:mysql://localhost:3306/openmrs_"
-        + SERVER_NAME
-        + " -DdbUser=root -DdbPassword='"
-        + pswd
-        + "'"
-    )
-    with ctx.cd(BASE_PATH):
-        ctx.run(cmd)
+DB_NAME = "openmrs_" + SERVER_NAME
 
 
 @task
@@ -45,6 +30,35 @@ def configure(ctx):
 
 
 @task
+def deploy(ctx):
+    """Runs Maven deploy for Mirebalais. Updates dependencies."""
+    with ctx.cd(BASE_PATH + "/openmrs-module-mirebalais"):
+        cmd = "mvn openmrs-sdk:deploy -Ddistro=api/src/main/resources/openmrs-distro.properties -U"
+        ctx.run(cmd)
+
+
+@task
+def enable_modules(ctx):
+    print "Requesting mysql root password..."
+    ctx.run(
+        "mysql -u root -p -e \"update global_property set property_value='true' where property like '%started%';\" "
+        + DB_NAME
+    )
+
+
+@task
+def install(ctx):
+    cmd = "mvn clean install -e -DskipTests=true"
+    ctx.run(cmd)
+
+
+@task
+def pull(ctx):
+    cmd = "mvn openmrs-sdk:pull"
+    ctx.run(cmd)
+
+
+@task
 def run(ctx):
     """Runs OpenMRS"""
     cmd = (
@@ -59,29 +73,19 @@ def run(ctx):
 
 
 @task
-def clean(ctx):
-    cmd = "mvn clean"
-    ctx.run(cmd)
-
-
-@task
-def install(ctx):
-    cmd = "mvn install -e -DskipTests=true"
-    ctx.run(cmd)
-
-
-@task
-def deploy(ctx):
-    """Runs Maven deploy for Mirebalais. Updates dependencies."""
-    with ctx.cd(BASE_PATH + "/openmrs-module-mirebalais"):
-        cmd = "mvn openmrs-sdk:deploy -Ddistro=api/src/main/resources/openmrs-distro.properties -U"
+def setup(ctx):
+    pswd = getpass.getpass("database root password:")
+    cmd = (
+        "mvn openmrs-sdk:setup -DserverId=" + SERVER_NAME + " "
+        "-Ddistro=org.openmrs.module:mirebalais:1.2-SNAPSHOT "
+        "-DdbUri=jdbc:mysql://localhost:3306/"
+        + DB_NAME
+        + " -DdbUser=root -DdbPassword='"
+        + pswd
+        + "'"
+    )
+    with ctx.cd(BASE_PATH):
         ctx.run(cmd)
-
-
-@task
-def pull(ctx):
-    cmd = "mvn openmrs-sdk:pull"
-    ctx.run(cmd)
 
 
 @task
