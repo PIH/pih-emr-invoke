@@ -39,6 +39,7 @@ def deploy(ctx):
 
 @task
 def enable_modules(ctx):
+    """Ensures that the mirebalais modules will be loaded on server startup"""
     print "Requesting mysql root password..."
     ctx.run(
         "mysql -u root -p -e \"update global_property set property_value='true' where property like '%started%';\" "
