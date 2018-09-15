@@ -14,7 +14,7 @@ PIH_CSV = "./input/diagnoses/pih-diagnoses.csv"
 PIH_MATCHES_CSV = "./output/diagnoses-matches-pih.csv"
 CIEL_CSV = "./input/diagnoses/ciel-diagnoses.csv"
 CIEL_MATCHES_CSV = "./output/diagnoses-matches-ciel.csv"
-OCL_JSON = "./input/diagnoses/ocl-diagnoses.json"
+OCL_JSON = "./input/diagnoses/who-diagnoses.json"
 UNMATCHED_CSV = "./output/diagnoses-unmatched.csv"
 
 
