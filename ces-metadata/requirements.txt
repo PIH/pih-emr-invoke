@@ -1,3 +1,0 @@
-fuzzywuzzy[speedup]
-pylint
-tqdm
