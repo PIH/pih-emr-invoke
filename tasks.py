@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
 import getpass
 import os
 from invoke import task
@@ -35,16 +37,6 @@ def deploy(ctx):
     with ctx.cd(BASE_PATH + "/openmrs-module-mirebalais"):
         cmd = "mvn openmrs-sdk:deploy -Ddistro=api/src/main/resources/openmrs-distro.properties -U"
         ctx.run(cmd)
-
-
-@task
-def enable_modules(ctx):
-    """Ensures that the mirebalais modules will be loaded on server startup"""
-    print "Requesting mysql root password..."
-    ctx.run(
-        "mysql -u root -p -e \"update global_property set property_value='true' where property like '%started%';\" "
-        + DB_NAME
-    )
 
 
 @task
@@ -93,3 +85,33 @@ def setup(ctx):
 def watch(ctx):
     cmd = "mvn openmrs-sdk:watch -DserverId=" + SERVER_NAME
     ctx.run(cmd)
+
+
+# MySQL Tasks #################################################################
+
+
+@task
+def enable_modules(ctx):
+    """Ensures that the mirebalais modules will be loaded on server startup"""
+    sql_cmd = "update global_property set property_value='true' where property like '%started%';"
+    run_sql(ctx, sql_cmd)
+
+
+@task
+def clear_address_hierarchy(ctx):
+    sql_code = (
+        "set foreign_key_checks=0; "
+        "delete from address_hierarchy_level; "
+        "delete from address_hierarchy_entry; "
+        "set foreign_key_checks=1; "
+    )
+    run_sql(ctx, sql_code)
+
+
+def run_sql(ctx, sql_code):
+    """Runs some SQL code as root user on the database specified by `DB_NAME`.
+
+    `sql_code` must not contain double-quotes.
+    """
+    print("Requesting mysql root password...")
+    ctx.run('mysql -u root -p -e "{}" {}'.format(sql_code, DB_NAME))
