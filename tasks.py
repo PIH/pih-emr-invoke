@@ -12,6 +12,17 @@ SERVER_NAME = "chiapas"
 DB_NAME = "openmrs_" + SERVER_NAME
 
 
+class bcolors:
+    HEADER = "\033[95m"
+    OKBLUE = "\033[94m"
+    OKGREEN = "\033[92m"
+    WARNING = "\033[93m"
+    FAIL = "\033[91m"
+    ENDC = "\033[0m"
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"
+
+
 @task
 def configure(ctx):
     config_file = "~/openmrs/" + SERVER_NAME + "/openmrs-runtime.properties"
@@ -37,6 +48,25 @@ def deploy(ctx):
     with ctx.cd(BASE_PATH + "/openmrs-module-mirebalais"):
         cmd = "mvn openmrs-sdk:deploy -Ddistro=api/src/main/resources/openmrs-distro.properties -U"
         ctx.run(cmd)
+
+
+@task
+def git_status(ctx):
+    dirs = [
+        "openmrs-module-pihcore",
+        "openmrs-module-mirebalais",
+        "openmrs-module-mirebalaismetadata",
+        "mirebalais-puppet",
+    ]
+    for d in dirs:
+        with ctx.cd(d):
+            res = ctx.run("git rev-parse --abbrev-ref HEAD", hide=True)
+            branch = res.stdout.strip()
+            if branch != "master":
+                print(d + ":\t" + branch)
+                print(bcolors.HEADER, end="")
+                ctx.run("git status -s -uno")
+                print(bcolors.ENDC, end="")
 
 
 @task
