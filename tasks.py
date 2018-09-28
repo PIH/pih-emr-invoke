@@ -138,6 +138,23 @@ def clear_address_hierarchy(ctx):
     run_sql(ctx, sql_code)
 
 
+@task
+def clear_idgen(ctx):
+    sql_code = (
+        "set foreign_key_checks=0; "
+        "delete from idgen_auto_generation_option; "
+        "delete from idgen_id_pool; "
+        "delete from idgen_identifier_source; "
+        "delete from idgen_log_entry; "
+        "delete from idgen_pooled_identifier; "
+        "delete from idgen_remote_source; "
+        "delete from idgen_reserved_identifier; "
+        "delete from idgen_seq_id_gen; "
+        "set foreign_key_checks=1; "
+    )
+    run_sql(ctx, sql_code)
+
+
 def run_sql(ctx, sql_code):
     """Runs some SQL code as root user on the database specified by `DB_NAME`.
 
