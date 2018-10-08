@@ -58,15 +58,27 @@ def git_status(ctx):
         "openmrs-module-mirebalaismetadata",
         "mirebalais-puppet",
     ]
-    for d in dirs:
-        with ctx.cd(d):
-            res = ctx.run("git rev-parse --abbrev-ref HEAD", hide=True)
-            branch = res.stdout.strip()
-            if branch != "master":
-                print(d + ":\t" + branch)
-                print(bcolors.HEADER, end="")
-                ctx.run("git status -s -uno")
-                print(bcolors.ENDC, end="")
+    with ctx.cd(BASE_PATH):
+        for d in dirs:
+            with ctx.cd(d):
+                branch = ctx.run(
+                    "git rev-parse --abbrev-ref HEAD", hide=True
+                ).stdout.strip()
+                changes = ctx.run("git status -s -uno", hide=True).stdout
+                if branch != "master" or changes:
+                    print(
+                        bcolors.BOLD
+                        + d
+                        + bcolors.ENDC
+                        + ": "
+                        + bcolors.OKBLUE
+                        + branch
+                        + bcolors.ENDC
+                    )
+                    if changes:
+                        print(bcolors.HEADER, end="")
+                        print(changes, end="")
+                        print(bcolors.ENDC, end="")
 
 
 @task
@@ -85,7 +97,7 @@ def pull(ctx):
 def run(ctx):
     """Runs OpenMRS"""
     cmd = (
-        "mvn openmrs-sdk:run -e -X -DserverId="
+        "mvn openmrs-sdk:run -e -X -o -DserverId="
         + SERVER_NAME
         + " | tee /dev/tty"
         + ' | awk -Winteractive \'/Starting ProtocolHandler/ { system("textme OpenMRS is ready") }'
