@@ -51,34 +51,66 @@ def deploy(ctx):
 
 
 @task
+def git_branch_find(ctx, branch_name):
+    def fcn(d, branch_name):
+        res = ctx.run(
+            "git show-ref --verify --quiet refs/heads/" + branch_name, warn=True
+        )
+        if res.exited == 0:
+            print(d)
+
+    in_each_directory(ctx, fcn, branch_name)
+
+
+@task
+def git_checkout(ctx, branch_name):
+    def fcn(d, branch_name):
+        res = ctx.run(
+            "git show-ref --verify --quiet refs/heads/" + branch_name, warn=True
+        )
+        if res.exited == 0:
+            ctx.run("git checkout " + branch_name, hide=True)
+
+    in_each_directory(ctx, fcn, branch_name)
+    git_status(ctx)
+
+
+@task
+def git_push(ctx, branch_name, force=False):
+    def fcn(d, branch_name):
+        res = ctx.run(
+            "git show-ref --verify --quiet refs/heads/" + branch_name, warn=True
+        )
+        if res.exited == 0:
+            print(bcolors.BOLD + d + bcolors.ENDC)
+            ctx.run(
+                "git push fork {} {}".format(branch_name, "--force" if force else "")
+            )
+
+    in_each_directory(ctx, fcn, branch_name)
+
+
+@task
 def git_status(ctx):
-    dirs = [
-        "openmrs-module-pihcore",
-        "openmrs-module-mirebalais",
-        "openmrs-module-mirebalaismetadata",
-        "mirebalais-puppet",
-    ]
-    with ctx.cd(BASE_PATH):
-        for d in dirs:
-            with ctx.cd(d):
-                branch = ctx.run(
-                    "git rev-parse --abbrev-ref HEAD", hide=True
-                ).stdout.strip()
-                changes = ctx.run("git status -s -uno", hide=True).stdout
-                if branch != "master" or changes:
-                    print(
-                        bcolors.BOLD
-                        + d
-                        + bcolors.ENDC
-                        + ": "
-                        + bcolors.OKBLUE
-                        + branch
-                        + bcolors.ENDC
-                    )
-                    if changes:
-                        print(bcolors.HEADER, end="")
-                        print(changes, end="")
-                        print(bcolors.ENDC, end="")
+    def fcn(d):
+        branch = ctx.run("git rev-parse --abbrev-ref HEAD", hide=True).stdout.strip()
+        changes = ctx.run("git status -s -uno", hide=True).stdout
+        if branch != "master" or changes:
+            print(
+                bcolors.BOLD
+                + d
+                + bcolors.ENDC
+                + ": "
+                + bcolors.OKBLUE
+                + branch
+                + bcolors.ENDC
+            )
+            if changes:
+                print(bcolors.HEADER, end="")
+                print(changes, end="")
+                print(bcolors.ENDC, end="")
+
+    in_each_directory(ctx, fcn)
 
 
 @task
@@ -165,6 +197,22 @@ def clear_idgen(ctx):
         "set foreign_key_checks=1; "
     )
     run_sql(ctx, sql_code)
+
+
+# Utils #######################################################################
+
+
+def in_each_directory(ctx, function, *args):
+    dirs = [
+        "openmrs-module-pihcore",
+        "openmrs-module-mirebalais",
+        "openmrs-module-mirebalaismetadata",
+        "mirebalais-puppet",
+    ]
+    with ctx.cd(BASE_PATH):
+        for d in dirs:
+            with ctx.cd(d):
+                function(d, *args)
 
 
 def run_sql(ctx, sql_code):
