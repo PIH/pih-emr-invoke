@@ -76,6 +76,21 @@ def git_checkout(ctx, branch_name):
 
 
 @task
+def git_pull(ctx):
+    def fcn(d):
+        print(bcolors.BOLD + d + bcolors.ENDC)
+        branch = ctx.run("git rev-parse --abbrev-ref HEAD", hide=True).stdout.strip()
+        if branch == "master":
+            print("Pulling...")
+            ctx.run("git pull")
+        else:
+            print("Fetching...")
+            ctx.run("git fetch")
+
+    in_each_directory(ctx, fcn)
+
+
+@task
 def git_push(ctx, branch_name, force=False):
     def fcn(d, branch_name):
         res = ctx.run(
