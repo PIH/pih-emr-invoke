@@ -23,6 +23,9 @@ class bcolors:
     UNDERLINE = "\033[4m"
 
 
+# OpenMRS Tasks ###############################################################
+
+
 @task
 def configure(ctx):
     config_file = "~/openmrs/" + SERVER_NAME + "/openmrs-runtime.properties"
@@ -43,11 +46,72 @@ def configure(ctx):
 
 
 @task
-def deploy(ctx):
+def deploy(ctx, no_prompt=False, offline=False):
     """Runs Maven deploy for Mirebalais. Updates dependencies."""
     with ctx.cd(BASE_PATH + "/openmrs-module-mirebalais"):
-        cmd = "mvn openmrs-sdk:deploy -Ddistro=api/src/main/resources/openmrs-distro.properties -U"
+        cmd = (
+            ("yes | " if no_prompt else "")
+            + "mvn openmrs-sdk:deploy"
+            + " -Ddistro=api/src/main/resources/openmrs-distro.properties"
+            + (" --offline" if offline else "")
+            + " -U -DserverId="
+            + SERVER_NAME
+        )
         ctx.run(cmd)
+
+
+@task
+def install(ctx):
+    cmd = "mvn clean install -e -DskipTests=true"
+    ctx.run(cmd)
+
+
+@task
+def pull(ctx):
+    cmd = "mvn openmrs-sdk:pull"
+    ctx.run(cmd)
+
+
+@task
+def run(ctx, offline=False):
+    """Deploys and then runs OpenMRS. Accepts default answers for openmrs-sdk:deploy."""
+    deploy(ctx, True, offline)
+    cmd = (
+        "mvn openmrs-sdk:run -e -X"
+        + (" --offline" if offline else "")
+        + " -DserverId="
+        + SERVER_NAME
+        + " | tee /dev/tty"
+        + ' | awk -Winteractive \'/Starting ProtocolHandler/ { system("textme OpenMRS is ready") }'
+        + '                      /Connect remote debugger/ { system("notify-send debugger") }\''
+    )
+    with ctx.cd(BASE_PATH):
+        ctx.run(cmd, pty=True)
+
+
+@task
+def setup(ctx):
+    pswd = getpass.getpass("database root password:")
+    cmd = (
+        "mvn openmrs-sdk:setup -DserverId=" + SERVER_NAME + " "
+        "-Ddistro=org.openmrs.module:mirebalais:1.2-SNAPSHOT "
+        "-DdbUri=jdbc:mysql://localhost:3306/"
+        + DB_NAME
+        + " -DdbUser=root -DdbPassword='"
+        + pswd
+        + "'"
+    )
+    with ctx.cd(BASE_PATH):
+        ctx.run(cmd)
+
+
+@task
+def watch(ctx):
+    cmd = "mvn openmrs-sdk:watch -DserverId=" + SERVER_NAME
+    ctx.run(cmd)
+
+
+# Git Tasks ###################################################################
 
 
 @task
@@ -126,54 +190,6 @@ def git_status(ctx):
                 print(bcolors.ENDC, end="")
 
     in_each_directory(ctx, fcn)
-
-
-@task
-def install(ctx):
-    cmd = "mvn clean install -e -DskipTests=true"
-    ctx.run(cmd)
-
-
-@task
-def pull(ctx):
-    cmd = "mvn openmrs-sdk:pull"
-    ctx.run(cmd)
-
-
-@task
-def run(ctx):
-    """Runs OpenMRS"""
-    cmd = (
-        "mvn openmrs-sdk:run -e -X -o -DserverId="
-        + SERVER_NAME
-        + " | tee /dev/tty"
-        + ' | awk -Winteractive \'/Starting ProtocolHandler/ { system("textme OpenMRS is ready") }'
-        + '                      /Connect remote debugger/ { system("notify-send debugger") }\''
-    )
-    with ctx.cd(BASE_PATH):
-        ctx.run(cmd, pty=True)
-
-
-@task
-def setup(ctx):
-    pswd = getpass.getpass("database root password:")
-    cmd = (
-        "mvn openmrs-sdk:setup -DserverId=" + SERVER_NAME + " "
-        "-Ddistro=org.openmrs.module:mirebalais:1.2-SNAPSHOT "
-        "-DdbUri=jdbc:mysql://localhost:3306/"
-        + DB_NAME
-        + " -DdbUser=root -DdbPassword='"
-        + pswd
-        + "'"
-    )
-    with ctx.cd(BASE_PATH):
-        ctx.run(cmd)
-
-
-@task
-def watch(ctx):
-    cmd = "mvn openmrs-sdk:watch -DserverId=" + SERVER_NAME
-    ctx.run(cmd)
 
 
 # MySQL Tasks #################################################################
