@@ -37,7 +37,10 @@ def configure(ctx):
     )
     pih_config_dir = "/home/brandon/Code/pih/mirebalais-puppet/mirebalais-modules/openmrs/files/config"
     ctx.run("ls " + pih_config_dir)
-    new_lines = ["pih.config=mexico", "pih.config.dir=" + pih_config_dir]
+    new_lines = [
+        "pih.config=mexico,mexico-salvador",
+        "pih.config.dir=" + pih_config_dir,
+    ]
     cmds = ["echo '{}' >> {}".format(l, config_file) for l in new_lines]
     for cmd in cmds:
         ctx.run(cmd)

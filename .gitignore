@@ -1,6 +1,7 @@
 openmrs-module-*
 mirebalais-puppet/
 ces-metadata/
+sa-mat-pt-merge/
 distro/ubuntuiso/
 distro/*.iso
 env/
