@@ -18,28 +18,45 @@ import java.io
 from java.io import File
 
 import argparse
+import errno
 import os
 from getpass import getpass
 
-parser = argparse.ArgumentParser(description='Export all tables from database to CSVs')
-parser.add_argument('dbfilename', help='Path of the access file to be exported')
-parser.add_argument('exportdirname', help='Path or name of directory to export files to')
-args = parser.parse_args()
-dbfilename = args.dbfilename
-exportdirname = args.exportdirname
 
-print "input filename is",dbfilename
-print "tables will be saved into directory",exportdirname
-dbfile = File(dbfilename)
-exportdir = File(exportdirname)
-passwd = getpass("Database password: ")
-# make a database object
-db = DatabaseBuilder(dbfile).setCodecProvider(CryptCodecProvider(passwd)).open()
-# make an export filter object
-export_filter = SimpleExportFilter()
-# make the output directory
-os.mkdir(exportdirname)
-# use 'em to throw down all the data!
-ExportUtil.exportAll(db,exportdir,'csv',True)
+def main():
+    parser = argparse.ArgumentParser(description='Export all tables from database to CSVs')
+    parser.add_argument('dbfilename', help='Path of the access file to be exported')
+    parser.add_argument('exportdirname', help='Path or name of directory to export files to')
+    args = parser.parse_args()
+    dbfilename = args.dbfilename
+    exportdirname = args.exportdirname
 
-print "All done!"
+    print "input filename is",dbfilename
+    print "tables will be saved into directory",exportdirname
+    dbfile = File(dbfilename)
+    exportdir = File(exportdirname)
+    passwd = getpass("Database password: ")
+    # make a database object
+    db = DatabaseBuilder(dbfile).setCodecProvider(CryptCodecProvider(passwd)).open()
+    # make an export filter object
+    export_filter = SimpleExportFilter()
+    # make the output directory
+    mkdirp(exportdirname)
+    # use 'em to throw down all the data!
+    ExportUtil.exportAll(db,exportdir,'csv',True)
+
+    print "All done!"
+
+
+def mkdirp(path):
+    try:
+        os.makedirs(path)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
+
+
+if __name__ == "__main__":
+    main()
