@@ -2,8 +2,8 @@ openmrs-module-*
 mirebalais-puppet/
 ces-metadata/
 ces-access-exporter/
-sa-mat-pt-merge/
-distro/ubuntuiso/
-distro/*.iso
+ces-maternal-data-analysis/
+ces-distro/ubuntuiso/
+ces-distro/*.iso
 env/
 *.pyc
