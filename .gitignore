@@ -1,5 +1,6 @@
 openmrs-module-*
 mirebalais-puppet/
+ces-ascvd/
 ces-metadata/
 ces-access-exporter/
 ces-maternal-data-analysis/
