@@ -76,9 +76,10 @@ def pull(ctx):
 
 
 @task
-def run(ctx, offline=False):
+def run(ctx, offline=False, skip_deploy=False):
     """Deploys and then runs OpenMRS. Accepts default answers for openmrs-sdk:deploy."""
-    deploy(ctx, True, offline)
+    if not skip_deploy:
+        deploy(ctx, True, offline)
     cmd = (
         "mvn openmrs-sdk:run -e -X"
         + (" --offline" if offline else "")
