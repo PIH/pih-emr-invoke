@@ -28,6 +28,9 @@ class bcolors:
 
 @task
 def configure(ctx):
+    """Updates openmrs-runtime.properties, the configuration file, for the server.
+    Sets the sites to mexico, mexico-salvador.
+    """
     config_file = "~/openmrs/" + SERVER_NAME + "/openmrs-runtime.properties"
     print("Starting config file:\n")
     ctx.run("cat " + config_file)
@@ -65,12 +68,14 @@ def deploy(ctx, no_prompt=False, offline=False):
 
 @task
 def install(ctx):
+    """Runs mvn clean install -e -DskipTests=true"""
     cmd = "mvn clean install -e -DskipTests=true"
     ctx.run(cmd)
 
 
 @task
 def pull(ctx):
+    """Runs mvn openmrs-sdk:pull"""
     cmd = "mvn openmrs-sdk:pull"
     ctx.run(cmd)
 
@@ -95,6 +100,7 @@ def run(ctx, offline=False, skip_deploy=False):
 
 @task
 def setup(ctx):
+    """Runs mvn openmrs-sdk:setup with the appropriate arguments"""
     pswd = getpass.getpass("database root password:")
     cmd = (
         "mvn openmrs-sdk:setup -DserverId=" + SERVER_NAME + " "
@@ -120,6 +126,8 @@ def watch(ctx):
 
 @task
 def git_branch_find(ctx, branch_name):
+    """Tells you what directories have a branch named `branch_name`"""
+
     def fcn(d, branch_name):
         res = ctx.run(
             "git show-ref --verify --quiet refs/heads/" + branch_name, warn=True
@@ -132,6 +140,8 @@ def git_branch_find(ctx, branch_name):
 
 @task
 def git_checkout(ctx, branch_name):
+    """Checks out `branch_name` in each directory in which it exists"""
+
     def fcn(d, branch_name):
         res = ctx.run(
             "git show-ref --verify --quiet refs/heads/" + branch_name, warn=True
@@ -145,6 +155,8 @@ def git_checkout(ctx, branch_name):
 
 @task
 def git_pull(ctx):
+    """Does `git pull` in each directory that is on `master`, and `git fetch` in each other directory"""
+
     def fcn(d):
         print(bcolors.BOLD + d + bcolors.ENDC)
         branch = ctx.run("git rev-parse --abbrev-ref HEAD", hide=True).stdout.strip()
@@ -160,6 +172,12 @@ def git_pull(ctx):
 
 @task
 def git_push(ctx, branch_name, force=False):
+    """Does `git push fork $(branch_name)` for each directory on branch `branch_name`.
+    
+    Expects that there is a remote named 'fork'. Fork the repository you're interested in
+    and do `git remote add fork $(my_fork_url)`.
+    """
+
     def fcn(d, branch_name):
         res = ctx.run(
             "git show-ref --verify --quiet refs/heads/" + branch_name, warn=True
@@ -175,6 +193,10 @@ def git_push(ctx, branch_name, force=False):
 
 @task
 def git_status(ctx):
+    """Shows brief git status information for each directory.
+
+    Ignores directories that are on master and have no changes."""
+
     def fcn(d):
         branch = ctx.run("git rev-parse --abbrev-ref HEAD", hide=True).stdout.strip()
         changes = ctx.run("git status -s -uno", hide=True).stdout
@@ -208,6 +230,7 @@ def enable_modules(ctx):
 
 @task
 def clear_address_hierarchy(ctx):
+    """Clears the MySQL tables for address hierarchy."""
     sql_code = (
         "set foreign_key_checks=0; "
         "delete from address_hierarchy_level; "
@@ -219,6 +242,7 @@ def clear_address_hierarchy(ctx):
 
 @task
 def clear_idgen(ctx):
+    """Clears the MySQL tables for idgen."""
     sql_code = (
         "set foreign_key_checks=0; "
         "delete from idgen_auto_generation_option; "
