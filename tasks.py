@@ -4,7 +4,8 @@ from __future__ import print_function
 
 import getpass
 import os
-from invoke import task
+from pprint import pprint
+from invoke import task, watchers
 
 BASE_PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -67,6 +68,53 @@ def deploy(ctx, no_prompt=False, offline=False):
 
 
 @task
+def update_dep(ctx):
+    """Runs openmrs-sdk:deploy from outside any module.
+
+    Use this when on starting you encounter error messages of the form
+
+    `Foo Module cannot be started because it requires the following module(s): Bar 1.2.3-SNAPSHOT`
+    """
+    print("When prompted, respond:")
+    print("  1 - module")
+    print("  2 - default (org.openmrs.module)")
+    print("  3 - the name of the missing module")
+    print("  4 - latest snapshot version that you need")
+    print()
+    cmd = "mvn openmrs-sdk:deploy" + " -U -DserverId=" + SERVER_NAME
+    ctx.run(cmd)
+
+
+@task
+def update_deps(ctx, missing_modules_list):  # doesn't work
+    """Runs update-dep for each module and version in the given list.
+
+    List should be in the format given by the "Error starting Module" error,
+    something like:
+
+        "paperrecord 1.3.0, radiologyapp 1.4.0, edtriageapp 1.1.0-SNAPSHOT"
+    """
+    cmd = "mvn openmrs-sdk:deploy" + " -U -DserverId=" + SERVER_NAME
+    name_version_strings = missing_modules_list.split(", ")
+    name_version_pairs = [nv.split(" ") for nv in name_version_strings]
+    pprint(name_version_pairs)
+    for module_name, version in name_version_pairs:
+        responders = []
+        responders.append(watchers.Responder("What would you like to deploy?", "1\n"))
+        responders.append(watchers.Responder("Please specify groupId", "\n"))
+        print("\n\nNow running for {} {}\n".format(module_name, version))
+        responders.append(
+            watchers.Responder("Please specify artifactId", module_name + "\n")
+        )
+        test_string = "You can deploy the following versions of the module:(.*\n){{1,7}}{}\) {}(.*\n){{1,7}}Which one do you choose\? \[.*\]:"
+        for i in range(1, 7):
+            responders.append(
+                watchers.Responder(test_string.format(i, version), str(i) + "\n")
+            )
+        ctx.run(cmd, watchers=responders)
+
+
+@task
 def install(ctx):
     """Runs mvn clean install -e -DskipTests=true"""
     cmd = "mvn clean install -e -DskipTests=true"
@@ -74,15 +122,10 @@ def install(ctx):
 
 
 @task
-def pull(ctx):
-    """Runs mvn openmrs-sdk:pull"""
-    cmd = "mvn openmrs-sdk:pull"
-    ctx.run(cmd)
-
-
-@task
-def run(ctx, offline=False, skip_deploy=False):
-    """Deploys and then runs OpenMRS. Accepts default answers for openmrs-sdk:deploy."""
+def run(ctx, offline=False, skip_pull=False, skip_deploy=False):
+    """Pulls, deploys and then runs OpenMRS. Accepts default answers for openmrs-sdk:deploy."""
+    if not skip_pull and not offline:
+        git_pull(ctx)
     if not skip_deploy:
         deploy(ctx, True, offline)
     cmd = (
