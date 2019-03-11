@@ -87,7 +87,9 @@ def update_dep(ctx):
 
 @task
 def update_deps(ctx, missing_modules_list):  # doesn't work
-    """Runs update-dep for each module and version in the given list.
+    """Doesn't work, don't use.
+    
+    Runs update-dep for each module and version in the given list.
 
     List should be in the format given by the "Error starting Module" error,
     something like:
@@ -296,6 +298,24 @@ def clear_idgen(ctx):
         "delete from idgen_remote_source; "
         "delete from idgen_reserved_identifier; "
         "delete from idgen_seq_id_gen; "
+        "set foreign_key_checks=1; "
+    )
+    run_sql(ctx, sql_code)
+
+
+@task
+def clear_all_data(ctx):
+    """ Deletes all patients, encounters, and obs. """
+    sql_code = (
+        "set foreign_key_checks=0; "
+        "delete from obs; "
+        "delete from encounter_provider; "
+        "delete from encounter; "
+        "delete from patient_identifier; "
+        "delete from patient; "
+        "delete from name_phonetics where person_name_id not in (1,2,3,4,5,6); "
+        "delete from person_name where person_name_id not in (1,2,3,4,5,6); "
+        "delete from person where person_id not in (1,2,3,4,5,6); "
         "set foreign_key_checks=1; "
     )
     run_sql(ctx, sql_code)

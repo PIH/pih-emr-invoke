@@ -1,10 +1,13 @@
 openmrs-module-*
 mirebalais-puppet/
-ces-ascvd/
-ces-metadata/
 ces-access-exporter/
+ces-analytics/
+ces-ascvd/
+ces-data-migration/
 ces-maternal-data-analysis/
+ces-metadata/
 ces-distro/ubuntuiso/
 ces-distro/*.iso
 env/
 *.pyc
+.Rproj.user
