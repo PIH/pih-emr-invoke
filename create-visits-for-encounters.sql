@@ -31,8 +31,8 @@ SELECT  e.patient_id, @visit_type_id, e.date_started, e.date_stopped, e.location
 FROM
 (
     SELECT patient_id, 
-           Min(encounter_datetime) AS date_started, 
-           Addtime(Max(encounter_datetime), '01:00:00') AS date_stopped,  /* to ensure starttime != endtime */
+           Subtime(Min(encounter_datetime), '00:05:00') AS date_started,  /* visit must start before first enc */
+           Addtime(Max(encounter_datetime), '00:05:00') AS date_stopped,  /* visit must end after last enc */
            location_id,
            creator
     FROM   encounter 
@@ -46,4 +46,5 @@ UPDATE encounter e
        INNER JOIN visit v 
                ON e.patient_id = v.patient_id 
                   AND Date(e.encounter_datetime) = Date(v.date_started) 
-SET    e.visit_id = v.visit_id; 
+SET    e.visit_id = v.visit_id
+WHERE FIND_IN_SET(e.encounter_type, @encounter_type_exclusions) = 0;
