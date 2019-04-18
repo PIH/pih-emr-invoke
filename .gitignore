@@ -1,4 +1,5 @@
 openmrs-module-*
+openmrs-core
 mirebalais-puppet/
 ces-access-exporter/
 ces-analytics/
