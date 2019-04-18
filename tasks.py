@@ -205,6 +205,7 @@ def git_pull(ctx):
     def fcn(d):
         print(bcolors.BOLD + d + bcolors.ENDC)
         branch = ctx.run("git rev-parse --abbrev-ref HEAD", hide=True).stdout.strip()
+        print("On branch " + branch)
         if branch == "master":
             print("Pulling...")
             ctx.run("git pull")
@@ -326,10 +327,11 @@ def clear_all_data(ctx):
 
 def in_each_directory(ctx, function, *args):
     dirs = [
-        "openmrs-module-pihcore",
         "openmrs-module-mirebalais",
+        "openmrs-module-pihcore",
         "openmrs-module-mirebalaismetadata",
         "mirebalais-puppet",
+        "openmrs-module-initializer",
     ]
     with ctx.cd(BASE_PATH):
         for d in dirs:
