@@ -10,7 +10,10 @@ from invoke import task, watchers
 BASE_PATH = os.path.dirname(os.path.realpath(__file__))
 
 SERVER_NAME = "chiapas"
-DB_NAME = "openmrs_" + SERVER_NAME
+
+
+def db_name(server_name):
+    return "openmrs_" + server_name
 
 
 class bcolors:
@@ -28,11 +31,11 @@ class bcolors:
 
 
 @task
-def configure(ctx):
+def configure(ctx, server=SERVER_NAME):
     """Updates openmrs-runtime.properties, the configuration file, for the server.
     Sets the sites to mexico, mexico-salvador.
     """
-    config_file = "~/openmrs/" + SERVER_NAME + "/openmrs-runtime.properties"
+    config_file = "~/openmrs/" + server + "/openmrs-runtime.properties"
     print("Starting config file:\n")
     ctx.run("cat " + config_file)
     print(
@@ -53,7 +56,7 @@ def configure(ctx):
 
 
 @task
-def deploy(ctx, no_prompt=False, offline=False):
+def deploy(ctx, no_prompt=False, offline=False, server=SERVER_NAME):
     """Runs Maven deploy for Mirebalais. Updates dependencies."""
     with ctx.cd(BASE_PATH + "/openmrs-module-mirebalais"):
         cmd = (
@@ -62,69 +65,13 @@ def deploy(ctx, no_prompt=False, offline=False):
             + " -Ddistro=api/src/main/resources/openmrs-distro.properties"
             + (" --offline" if offline else "")
             + " -U -DserverId="
-            + SERVER_NAME
+            + server
         )
         ctx.run(cmd)
 
 
 @task
-def update_dep(ctx):
-    """Runs openmrs-sdk:deploy from outside any module.
-
-    Use this when on starting you encounter error messages of the form
-
-    `Foo Module cannot be started because it requires the following module(s): Bar 1.2.3-SNAPSHOT`
-    """
-    print("When prompted, respond:")
-    print("  1 - module")
-    print("  2 - default (org.openmrs.module)")
-    print("  3 - the name of the missing module")
-    print("  4 - latest snapshot version that you need")
-    print()
-    cmd = "mvn openmrs-sdk:deploy" + " -U -DserverId=" + SERVER_NAME
-    ctx.run(cmd)
-
-
-@task
-def update_deps(ctx, missing_modules_list):  # doesn't work
-    """Doesn't work, don't use.
-    
-    Runs update-dep for each module and version in the given list.
-
-    List should be in the format given by the "Error starting Module" error,
-    something like:
-
-        "paperrecord 1.3.0, radiologyapp 1.4.0, edtriageapp 1.1.0-SNAPSHOT"
-    """
-    cmd = "mvn openmrs-sdk:deploy" + " -U -DserverId=" + SERVER_NAME
-    name_version_strings = missing_modules_list.split(", ")
-    name_version_pairs = [nv.split(" ") for nv in name_version_strings]
-    pprint(name_version_pairs)
-    for module_name, version in name_version_pairs:
-        responders = []
-        responders.append(watchers.Responder("What would you like to deploy?", "1\n"))
-        responders.append(watchers.Responder("Please specify groupId", "\n"))
-        print("\n\nNow running for {} {}\n".format(module_name, version))
-        responders.append(
-            watchers.Responder("Please specify artifactId", module_name + "\n")
-        )
-        test_string = "You can deploy the following versions of the module:(.*\n){{1,7}}{}\) {}(.*\n){{1,7}}Which one do you choose\? \[.*\]:"
-        for i in range(1, 7):
-            responders.append(
-                watchers.Responder(test_string.format(i, version), str(i) + "\n")
-            )
-        ctx.run(cmd, watchers=responders)
-
-
-@task
-def install(ctx):
-    """Runs mvn clean install -e -DskipTests=true"""
-    cmd = "mvn clean install -e -DskipTests=true"
-    ctx.run(cmd)
-
-
-@task
-def run(ctx, offline=False, skip_pull=False, skip_deploy=False):
+def run(ctx, offline=False, skip_pull=False, skip_deploy=False, server=SERVER_NAME):
     """Pulls, deploys and then runs OpenMRS. Accepts default answers for openmrs-sdk:deploy."""
     if not skip_pull and not offline:
         git_pull(ctx)
@@ -134,7 +81,7 @@ def run(ctx, offline=False, skip_pull=False, skip_deploy=False):
         "mvn openmrs-sdk:run -e -X"
         + (" --offline" if offline else "")
         + " -DserverId="
-        + SERVER_NAME
+        + server
         + " | tee /dev/tty"
         + ' | awk -Winteractive \'/Starting ProtocolHandler/ { system("textme OpenMRS is ready") }'
         + '                      /Connect remote debugger/ { system("notify-send debugger") }\''
@@ -144,14 +91,14 @@ def run(ctx, offline=False, skip_pull=False, skip_deploy=False):
 
 
 @task
-def setup(ctx):
+def setup(ctx, server=SERVER_NAME):
     """Runs mvn openmrs-sdk:setup with the appropriate arguments"""
     pswd = getpass.getpass("database root password:")
     cmd = (
-        "mvn openmrs-sdk:setup -DserverId=" + SERVER_NAME + " "
+        "mvn openmrs-sdk:setup -DserverId=" + server + " "
         "-Ddistro=org.openmrs.module:mirebalais:1.2-SNAPSHOT "
         "-DdbUri=jdbc:mysql://localhost:3306/"
-        + DB_NAME
+        + db_name(server)
         + " -DdbUser=root -DdbPassword='"
         + pswd
         + "'"
@@ -161,8 +108,8 @@ def setup(ctx):
 
 
 @task
-def watch(ctx):
-    cmd = "mvn openmrs-sdk:watch -DserverId=" + SERVER_NAME
+def watch(ctx, server=SERVER_NAME):
+    cmd = "mvn openmrs-sdk:watch -DserverId=" + server
     ctx.run(cmd)
 
 
@@ -268,14 +215,14 @@ def git_status(ctx):
 
 
 @task
-def enable_modules(ctx):
+def enable_modules(ctx, server=SERVER_NAME):
     """Ensures that the mirebalais modules will be loaded on server startup"""
     sql_cmd = "update global_property set property_value='true' where property like '%started%';"
-    run_sql(ctx, sql_cmd)
+    run_sql(ctx, sql_cmd, server)
 
 
 @task
-def clear_address_hierarchy(ctx):
+def clear_address_hierarchy(ctx, server=SERVER_NAME):
     """Clears the MySQL tables for address hierarchy."""
     sql_code = (
         "set foreign_key_checks=0; "
@@ -283,11 +230,11 @@ def clear_address_hierarchy(ctx):
         "delete from address_hierarchy_entry; "
         "set foreign_key_checks=1; "
     )
-    run_sql(ctx, sql_code)
+    run_sql(ctx, sql_code, server)
 
 
 @task
-def clear_idgen(ctx):
+def clear_idgen(ctx, server=SERVER_NAME):
     """Clears the MySQL tables for idgen."""
     sql_code = (
         "set foreign_key_checks=0; "
@@ -301,11 +248,11 @@ def clear_idgen(ctx):
         "delete from idgen_seq_id_gen; "
         "set foreign_key_checks=1; "
     )
-    run_sql(ctx, sql_code)
+    run_sql(ctx, sql_code, server)
 
 
 @task
-def clear_all_data(ctx):
+def clear_all_data(ctx, server=SERVER_NAME):
     """ Deletes all patients, encounters, and obs. """
     sql_code = (
         "set foreign_key_checks=0; "
@@ -319,7 +266,7 @@ def clear_all_data(ctx):
         "delete from person where person_id not in (1,2,3,4,5,6); "
         "set foreign_key_checks=1; "
     )
-    run_sql(ctx, sql_code)
+    run_sql(ctx, sql_code, server)
 
 
 # Utils #######################################################################
@@ -339,10 +286,10 @@ def in_each_directory(ctx, function, *args):
                 function(d, *args)
 
 
-def run_sql(ctx, sql_code):
-    """Runs some SQL code as root user on the database specified by `DB_NAME`.
+def run_sql(ctx, sql_code, server=SERVER_NAME):
+    """Runs some SQL code as root user on the database `openmrs_<server>`.
 
     `sql_code` must not contain double-quotes.
     """
     print("Requesting mysql root password...")
-    ctx.run('mysql -u root -p -e "{}" {}'.format(sql_code, DB_NAME))
+    ctx.run('mysql -u root -p -e "{}" {}'.format(sql_code, db_name(server)))
