@@ -9,6 +9,7 @@ ces-maternal-data-analysis/
 ces-metadata/
 ces-distro/ubuntuiso/
 ces-distro/*.iso
+database-transfer-gui/
 env/
 *.pyc
 .Rproj.user

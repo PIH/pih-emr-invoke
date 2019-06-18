@@ -5,11 +5,17 @@ from __future__ import print_function
 import getpass
 import os
 from pprint import pprint
+
+from dotenv import load_dotenv, find_dotenv
 from invoke import task, watchers
 
 BASE_PATH = os.path.dirname(os.path.realpath(__file__))
 
-SERVER_NAME = "chiapas"
+load_dotenv(find_dotenv())
+
+SERVER_NAME = os.getenv("SERVER_NAME")
+MODULES = os.getenv("MODULES").split(",")
+PIH_CONFIG = os.getenv("PIH_CONFIG")
 
 
 def db_name(server_name):
@@ -44,10 +50,7 @@ def configure(ctx, server=SERVER_NAME):
     )
     pih_config_dir = "/home/brandon/Code/pih/mirebalais-puppet/mirebalais-modules/openmrs/files/config"
     ctx.run("ls " + pih_config_dir)
-    new_lines = [
-        "pih.config=mexico,mexico-salvador",
-        "pih.config.dir=" + pih_config_dir,
-    ]
+    new_lines = ["pih.config=" + PIH_CONFIG, "pih.config.dir=" + pih_config_dir]
     cmds = ["echo '{}' >> {}".format(l, config_file) for l in new_lines]
     for cmd in cmds:
         ctx.run(cmd)
@@ -71,12 +74,21 @@ def deploy(ctx, no_prompt=False, offline=False, server=SERVER_NAME):
 
 
 @task
+def setenv(ctx, env_suffix):
+    """
+    Links the .env file with the given env_suffix.
+    e.g. `invoke setenv chiapas` runs `ln -sf .env.chiapas .env`
+    """
+    ctx.run("ln -sf .env." + env_suffix + " .env")
+
+
+@task
 def run(ctx, offline=False, skip_pull=False, skip_deploy=False, server=SERVER_NAME):
     """Pulls, deploys and then runs OpenMRS. Accepts default answers for openmrs-sdk:deploy."""
     if not skip_pull and not offline:
         git_pull(ctx)
     if not skip_deploy:
-        deploy(ctx, True, offline)
+        deploy(ctx, True, offline, server)
     cmd = (
         "mvn openmrs-sdk:run -e -X"
         + (" --offline" if offline else "")
@@ -186,7 +198,7 @@ def git_push(ctx, branch_name, force=False):
 
 @task
 def git_status(ctx):
-    """Shows brief git status information for each directory.
+    """Shows server name and brief git status information for each directory.
 
     Ignores directories that are on master and have no changes."""
 
@@ -208,6 +220,7 @@ def git_status(ctx):
                 print(changes, end="")
                 print(bcolors.ENDC, end="")
 
+    print("Server: " + SERVER_NAME)
     in_each_directory(ctx, fcn)
 
 
@@ -223,7 +236,7 @@ def enable_modules(ctx, server=SERVER_NAME):
 
 @task
 def clear_address_hierarchy(ctx, server=SERVER_NAME):
-    """Clears the MySQL tables for address hierarchy."""
+    """Clears the MySQL tables for address hierarchy. Deletes the configuration checksum to ensure it gets reloaded."""
     sql_code = (
         "set foreign_key_checks=0; "
         "delete from address_hierarchy_level; "
@@ -231,6 +244,8 @@ def clear_address_hierarchy(ctx, server=SERVER_NAME):
         "set foreign_key_checks=1; "
     )
     run_sql(ctx, sql_code, server)
+    checksum_dir = "~/openmrs/" + server + "/configuration_checksums/"
+    ctx.run("rm -r " + checksum_dir)
 
 
 @task
@@ -273,15 +288,8 @@ def clear_all_data(ctx, server=SERVER_NAME):
 
 
 def in_each_directory(ctx, function, *args):
-    dirs = [
-        "openmrs-module-mirebalais",
-        "openmrs-module-pihcore",
-        "openmrs-module-mirebalaismetadata",
-        "mirebalais-puppet",
-        "openmrs-module-initializer",
-    ]
     with ctx.cd(BASE_PATH):
-        for d in dirs:
+        for d in MODULES:
             with ctx.cd(d):
                 function(d, *args)
 
