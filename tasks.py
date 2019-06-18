@@ -1,4 +1,25 @@
 #!/usr/bin/env python
+"""
+This is an Invoke file. https://www.pyinvoke.org/
+
+To use it, you'll need to install Invoke on your system.
+
+Run `invoke -l` for a list of commands.
+
+To get started, you'll need to create a .env file in this directory.
+It should look something like
+
+```
+SERVER_NAME=myserver
+MODULES=openmrs-module-mirebalais,mirebalais-puppet
+PIH_CONFIG=mexico,mexico-salvador
+```
+
+PIH_CONFIG is used by `invoke configure`. REPOS is used by all of the
+commands that run in each repository you're working on, such as
+`invoke git-status`.
+
+"""
 
 from __future__ import print_function
 
@@ -14,7 +35,7 @@ BASE_PATH = os.path.dirname(os.path.realpath(__file__))
 load_dotenv(find_dotenv())
 
 SERVER_NAME = os.getenv("SERVER_NAME")
-MODULES = os.getenv("MODULES").split(",")
+MODULES = os.getenv("REPOS").split(",")
 PIH_CONFIG = os.getenv("PIH_CONFIG")
 
 
