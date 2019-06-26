@@ -100,16 +100,31 @@ def setenv(ctx, env_suffix):
     Links the .env file with the given env_suffix.
     e.g. `invoke setenv chiapas` runs `ln -sf .env.chiapas .env`
     """
-    ctx.run("ln -sf .env." + env_suffix + " .env")
+    file_name = ".env." + env_suffix
+    if not os.path.isfile(file_name):
+        print("ERROR: No such env: " + env_suffix)
+        exit(1)
+    ctx.run("ln -sf " + file_name + " .env")
 
 
 @task
-def run(ctx, offline=False, skip_pull=False, skip_deploy=False, server=SERVER_NAME):
-    """Pulls, deploys and then runs OpenMRS. Accepts default answers for openmrs-sdk:deploy."""
+def run(
+    ctx,
+    offline=False,
+    skip_pull=False,
+    skip_deploy=False,
+    skip_enable_modules=False,
+    server=SERVER_NAME,
+):
+    """Pulls, deploys, enables modules, and then runs OpenMRS.
+    Accepts default answers for openmrs-sdk:deploy.
+    """
     if not skip_pull and not offline:
         git_pull(ctx)
     if not skip_deploy:
         deploy(ctx, True, offline, server)
+    if not skip_enable_modules:
+        enable_modules(ctx, server)
     cmd = (
         "mvn openmrs-sdk:run -e -X"
         + (" --offline" if offline else "")
