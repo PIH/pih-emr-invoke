@@ -26,21 +26,11 @@ from __future__ import print_function
 import getpass
 import os
 from pprint import pprint
+from functools import partial
+from time import sleep
 
 from dotenv import load_dotenv, find_dotenv
 from invoke import task, watchers
-
-BASE_PATH = os.path.dirname(os.path.realpath(__file__))
-
-load_dotenv(find_dotenv())
-
-SERVER_NAME = os.getenv("SERVER_NAME")
-MODULES = os.getenv("REPOS").split(",")
-PIH_CONFIG = os.getenv("PIH_CONFIG")
-
-
-def db_name(server_name):
-    return "openmrs_" + server_name
 
 
 class bcolors:
@@ -52,6 +42,34 @@ class bcolors:
     ENDC = "\033[0m"
     BOLD = "\033[1m"
     UNDERLINE = "\033[4m"
+
+
+BASE_PATH = os.path.dirname(os.path.realpath(__file__))
+
+SERVER_NAME = None
+MODULES = None
+PIH_CONFIG = None
+
+
+def load_env_vars():
+    global SERVER_NAME, MODULES, PIH_CONFIG
+    load_dotenv(find_dotenv(), override=True)
+    SERVER_NAME = os.getenv("SERVER_NAME")
+    MODULES = os.getenv("REPOS").split(",")
+    PIH_CONFIG = os.getenv("PIH_CONFIG")
+
+
+def print_env_vars():
+    print("Server: " + bcolors.BOLD + SERVER_NAME + bcolors.ENDC)
+    print("Modules: " + ", ".join(MODULES))
+    print("pih.config: " + PIH_CONFIG)
+
+
+load_env_vars()
+
+
+def db_name(server_name):
+    return "openmrs_" + server_name
 
 
 # OpenMRS Tasks ###############################################################
@@ -101,10 +119,12 @@ def setenv(ctx, env_suffix):
     e.g. `invoke setenv chiapas` runs `ln -sf .env.chiapas .env`
     """
     file_name = ".env." + env_suffix
-    if not os.path.isfile(file_name):
-        print("ERROR: No such env: " + env_suffix)
-        exit(1)
-    ctx.run("ln -sf " + file_name + " .env")
+    with ctx.cd(BASE_PATH):
+        if not os.path.isfile(file_name):
+            print("ERROR: No such env: " + env_suffix)
+            exit(1)
+        ctx.run("ln -sf " + file_name + " .env")
+    load_env_vars()
 
 
 @task
@@ -114,11 +134,16 @@ def run(
     skip_pull=False,
     skip_deploy=False,
     skip_enable_modules=False,
+    env=None,
     server=SERVER_NAME,
 ):
     """Pulls, deploys, enables modules, and then runs OpenMRS.
     Accepts default answers for openmrs-sdk:deploy.
     """
+    if env:
+        setenv(ctx, env)
+    print_env_vars()
+    print()
     if not skip_pull and not offline:
         git_pull(ctx)
     if not skip_deploy:
@@ -153,12 +178,23 @@ def setup(ctx, server=SERVER_NAME):
     )
     with ctx.cd(BASE_PATH):
         ctx.run(cmd)
+    watch_all(ctx, server)
 
 
 @task
 def watch(ctx, server=SERVER_NAME):
     cmd = "mvn openmrs-sdk:watch -DserverId=" + server
     ctx.run(cmd)
+
+
+@task
+def watch_all(ctx, server=SERVER_NAME):
+    """Runs openrms-sdk:watch in each directory in REPOS"""
+    with ctx.cd(BASE_PATH):
+        for d in MODULES:
+            if d.startswith("openmrs-module-"):
+                with ctx.cd(d):
+                    watch(ctx, server)
 
 
 # Git Tasks ###################################################################
