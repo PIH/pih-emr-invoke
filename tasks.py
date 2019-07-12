@@ -18,7 +18,6 @@ PIH_CONFIG=mexico,mexico-salvador
 PIH_CONFIG is used by `invoke configure`. REPOS is used by all of the
 commands that run in each repository you're working on, such as
 `invoke git-status`.
-
 """
 
 from __future__ import print_function
@@ -69,7 +68,7 @@ load_env_vars()
 
 
 def db_name(server_name):
-    return "openmrs_" + server_name
+    return "openmrs_" + server_name.replace("-", "_")
 
 
 # OpenMRS Tasks ###############################################################
@@ -139,9 +138,14 @@ def run(
 ):
     """Pulls, deploys, enables modules, and then runs OpenMRS.
     Accepts default answers for openmrs-sdk:deploy.
+
+    The `--env` flag can be used to change the active server and
+    run that server at the same time. To just run a particular server,
+    leaving the active server as-is, you can use the `--server` flag.
     """
     if env:
         setenv(ctx, env)
+        server = SERVER_NAME
     print_env_vars()
     print()
     if not skip_pull and not offline:

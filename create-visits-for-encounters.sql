@@ -37,6 +37,7 @@ FROM
            creator
     FROM   encounter 
     WHERE  FIND_IN_SET(encounter_type, @encounter_type_exclusions) = 0
+            AND e.visit_id IS NULL
     GROUP  BY patient_id, 
               Date(encounter_datetime) 
 ) AS e;
@@ -47,4 +48,5 @@ UPDATE encounter e
                ON e.patient_id = v.patient_id 
                   AND Date(e.encounter_datetime) = Date(v.date_started) 
 SET    e.visit_id = v.visit_id
-WHERE FIND_IN_SET(e.encounter_type, @encounter_type_exclusions) = 0;
+WHERE FIND_IN_SET(e.encounter_type, @encounter_type_exclusions) = 0
+        AND e.visit_id IS NULL;
