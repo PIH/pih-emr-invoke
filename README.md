@@ -36,7 +36,7 @@ repository, `cd` to that directory and do
 
 ```
 git init
-git remote add origin https://github.com/brandones/pih-emr-workspace
+git remote add origin git@github.com:PIH/pih-emr-invoke.git
 git pull origin master
 sudo pip install -r requirements.txt
 ```
