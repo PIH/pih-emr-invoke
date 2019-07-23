@@ -5,8 +5,9 @@ with OpenMRS. It helps with setup, running, and git management of multiple
 repositories.
 
 This repository should be the parent directory of all of your OpenMRS
-directories. Please see the "Setup" section (first-time or existing OpenMRS)
-appropriate to your situation.
+directories. Please see the "Setup" section appropriate to your situation, whether
+you need to set up PIH EMR or you just want to use this with an existing
+setup.
 
 ## What does it do?
 
