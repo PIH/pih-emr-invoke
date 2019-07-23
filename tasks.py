@@ -2,22 +2,12 @@
 """
 This is an Invoke file. https://www.pyinvoke.org/
 
-To use it, you'll need to install Invoke on your system.
+To use it, you'll need to install Invoke on your system, and to
+create a `.env` file in this directory.
+It should look something like the `.env.sample` file. Please see
+`README.md` for additional documentation.
 
-Run `invoke -l` for a list of commands.
-
-To get started, you'll need to create a .env file in this directory.
-It should look something like
-
-```
-SERVER_NAME=myserver
-MODULES=openmrs-module-mirebalais,mirebalais-puppet
-PIH_CONFIG=mexico,mexico-salvador
-```
-
-PIH_CONFIG is used by `invoke configure`. REPOS is used by all of the
-commands that run in each repository you're working on, such as
-`invoke git-status`.
+Once set up, run `invoke -l` for a list of commands.
 """
 
 from __future__ import print_function
@@ -47,20 +37,23 @@ BASE_PATH = os.path.dirname(os.path.realpath(__file__))
 
 SERVER_NAME = None
 MODULES = None
+PIH_CONFIG_DIR = None
 PIH_CONFIG = None
 
 
 def load_env_vars():
-    global SERVER_NAME, MODULES, PIH_CONFIG
+    global SERVER_NAME, MODULES, PIH_CONFIG, PIH_CONFIG_DIR
     load_dotenv(find_dotenv(), override=True)
     SERVER_NAME = os.getenv("SERVER_NAME")
     MODULES = os.getenv("REPOS").split(",")
+    PIH_CONFIG_DIR = os.getenv("PIH_CONFIG_DIR")
     PIH_CONFIG = os.getenv("PIH_CONFIG")
 
 
 def print_env_vars():
     print("Server: " + bcolors.BOLD + SERVER_NAME + bcolors.ENDC)
     print("Modules: " + ", ".join(MODULES))
+    print("Config dir: " + PIH_CONFIG_DIR)
     print("pih.config: " + PIH_CONFIG)
 
 
@@ -86,9 +79,8 @@ def configure(ctx, server=SERVER_NAME):
         "\n\nThe following should be a bunch of JSON files. If it's not, the "
         "pih config dir path is wrong and you need to edit this code."
     )
-    pih_config_dir = "/home/brandon/Code/pih/mirebalais-puppet/mirebalais-modules/openmrs/files/config"
-    ctx.run("ls " + pih_config_dir)
-    new_lines = ["pih.config=" + PIH_CONFIG, "pih.config.dir=" + pih_config_dir]
+    ctx.run("ls " + PIH_CONFIG_DIR)
+    new_lines = ["pih.config=" + PIH_CONFIG, "pih.config.dir=" + PIH_CONFIG_DIR]
     cmds = ["echo '{}' >> {}".format(l, config_file) for l in new_lines]
     for cmd in cmds:
         ctx.run(cmd)
@@ -148,12 +140,12 @@ def run(
         server = SERVER_NAME
     print_env_vars()
     print()
+    if not skip_enable_modules:
+        enable_modules(ctx, server)
     if not skip_pull and not offline:
         git_pull(ctx)
     if not skip_deploy:
         deploy(ctx, True, offline, server)
-    if not skip_enable_modules:
-        enable_modules(ctx, server)
     cmd = (
         "mvn openmrs-sdk:run -e -X"
         + (" --offline" if offline else "")
@@ -187,6 +179,7 @@ def setup(ctx, server=SERVER_NAME):
 
 @task
 def watch(ctx, server=SERVER_NAME):
+    """Runs mvn openmrs-sdk:watch in the current directory"""
     cmd = "mvn openmrs-sdk:watch -DserverId=" + server
     ctx.run(cmd)
 
