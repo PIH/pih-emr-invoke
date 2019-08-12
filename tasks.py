@@ -336,18 +336,31 @@ def clear_idgen(ctx, server=SERVER_NAME):
 
 
 @task
-def clear_all_data(ctx, server=SERVER_NAME):
-    """ Deletes all patients, encounters, and obs. """
+def clear_all_data(ctx, server=SERVER_NAME, num_persons_to_keep=2):
+    """ Deletes all patients, encounters, obs, and program enrollments. """
+    persons_id_string = ",".join([str(i) for i in range(1, num_persons_to_keep + 1)])
     sql_code = (
         "set foreign_key_checks=0; "
+        "delete from patient_program; "
         "delete from obs; "
         "delete from encounter_provider; "
         "delete from encounter; "
+        "delete from visit; "
+        "delete from relationship; "
         "delete from patient_identifier; "
         "delete from patient; "
-        "delete from name_phonetics where person_name_id not in (1,2,3,4,5,6); "
-        "delete from person_name where person_name_id not in (1,2,3,4,5,6); "
-        "delete from person where person_id not in (1,2,3,4,5,6); "
+        "delete from person_address; "
+        "delete from name_phonetics where person_name_id not in ("
+        + persons_id_string
+        + "); "
+        "delete from person_name where person_name_id not in ("
+        + persons_id_string
+        + "); "
+        "delete from person where person_id not in (" + persons_id_string + "); "
+        "delete from provider where person_id not in (" + persons_id_string + "); "
+        "delete from users where person_id not in (" + persons_id_string + "); "
+        "delete from notification_alert_recipient; "
+        "delete from notification_alert; "
         "set foreign_key_checks=1; "
     )
     run_sql(ctx, sql_code, server)
@@ -369,4 +382,6 @@ def run_sql(ctx, sql_code, server=SERVER_NAME):
     `sql_code` must not contain double-quotes.
     """
     print("Requesting mysql root password...")
-    ctx.run('mysql -u root -p -e "{}" {}'.format(sql_code, db_name(server)))
+    command = 'mysql -u root -p -e "{}" {}'.format(sql_code, db_name(server))
+    print(command)
+    ctx.run(command)
