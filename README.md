@@ -114,6 +114,7 @@ To set up the `.env` file, do `cp .env.sample .env.mysite` and then edit
 - `REPOS` should be a comma-separated list of the subdirectories of the current directory that you are working with. The ones that are git repositories will be used for all the `git-` Invoke commands. The ones that are OpenMRS modules will be used for all the Invoke commands that use Maven.
 - `PIH_CONFIG_DIR` should be the path to the directory containing your PIH Config file. It's probably `/path/to/mirebalais-puppet/mirebalais-modules/openmrs/files/config`.
 - `PIH_CONFIG` is a comma-separated list of PIH Config files. See the files in the [PIH Config Directory](https://github.com/PIH/mirebalais-puppet/tree/master/mirebalais-modules/openmrs/files/config), and drop the `pih-config-` prefix and the `.json` suffix.
+- `MYSQL_INSTALLATION` should be set to `docker` if you are using openmrs-sdk-mysql for MySQL. Otherwise omit it.
 
 Finally, run `invoke setenv mysite`, where `mysite` is the suffix of your `.env` file.
 

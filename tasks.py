@@ -12,6 +12,11 @@ Once set up, run `invoke -l` for a list of commands.
 
 from __future__ import print_function
 
+try:
+    input = raw_input
+except NameError:
+    pass
+
 import getpass
 import os
 from pprint import pprint
@@ -19,7 +24,7 @@ from functools import partial
 from time import sleep
 
 from dotenv import load_dotenv, find_dotenv
-from invoke import task, watchers
+from invoke import task, watchers, Failure
 
 
 class bcolors:
@@ -39,15 +44,21 @@ SERVER_NAME = None
 MODULES = None
 PIH_CONFIG_DIR = None
 PIH_CONFIG = None
+MYSQL_INSTALLATION = None
 
 
 def load_env_vars():
-    global SERVER_NAME, MODULES, PIH_CONFIG, PIH_CONFIG_DIR
+    global SERVER_NAME, MODULES, PIH_CONFIG, PIH_CONFIG_DIR, MYSQL_INSTALLATION
     load_dotenv(find_dotenv(), override=True)
     SERVER_NAME = os.getenv("SERVER_NAME")
     MODULES = os.getenv("REPOS").split(",")
     PIH_CONFIG_DIR = os.getenv("PIH_CONFIG_DIR")
     PIH_CONFIG = os.getenv("PIH_CONFIG")
+    MYSQL_INSTALLATION = os.getenv("MYSQL_INSTALLATION")
+    if MYSQL_INSTALLATION not in (None, "", "docker"):
+        raise Exception(
+            "Invalid environment variable MYSQL_INSTALLATION=" + MYSQL_INSTALLATION
+        )
 
 
 def print_env_vars():
@@ -61,7 +72,10 @@ load_env_vars()
 
 
 def db_name(server_name):
-    return "openmrs_" + server_name.replace("-", "_")
+    server_name_fixed = server_name.replace("-", "_")
+    if MYSQL_INSTALLATION == "docker":
+        return server_name_fixed
+    return "openmrs_" + server_name_fixed
 
 
 # OpenMRS Tasks ###############################################################
@@ -139,6 +153,8 @@ def run(
         setenv(ctx, env)
         server = SERVER_NAME
     print_env_vars()
+    print()
+    input("Check the above, then press Enter to continue, or Ctrl-C to abort.")
     print()
     if not skip_enable_modules:
         enable_modules(ctx, server)
@@ -337,7 +353,7 @@ def clear_idgen(ctx, server=SERVER_NAME):
 
 @task
 def clear_all_data(ctx, server=SERVER_NAME, num_persons_to_keep=2):
-    """ Deletes all patients, encounters, obs, and program enrollments. """
+    """ Deletes all data (not metadata). """
     persons_id_string = ",".join([str(i) for i in range(1, num_persons_to_keep + 1)])
     sql_code = (
         "set foreign_key_checks=0; "
@@ -381,7 +397,27 @@ def run_sql(ctx, sql_code, server=SERVER_NAME):
 
     `sql_code` must not contain double-quotes.
     """
-    print("Requesting mysql root password...")
-    command = 'mysql -u root -p -e "{}" {}'.format(sql_code, db_name(server))
-    print(command)
-    ctx.run(command)
+    root_pass_result = ctx.run(
+        "grep connection.password ~/openmrs/"
+        + server
+        + '/openmrs-server.properties | cut -f2 -d"="',
+        warn=False,
+        hide=True,
+    )
+    root_pass = root_pass_result.stdout.strip()
+    command = "mysql -u root --password='{}' -e \"{}\" {}".format(
+        root_pass, sql_code, db_name(server)
+    )
+
+    if MYSQL_INSTALLATION == "docker":
+        container_id_result = ctx.run(
+            "docker ps | grep openmrs-sdk-mysql | cut -f1 -d' '", warn=False, hide=True
+        )
+        container_id = container_id_result.stdout.strip()
+        command = "docker exec {} {}".format(container_id, command)
+
+    try:
+        ctx.run(command, hide="stderr")
+    except Failure as e:
+        e.result.command = e.result.command.replace(root_pass, "<redacted>")
+        print(e)
