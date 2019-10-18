@@ -66,6 +66,7 @@ def print_env_vars():
     print("Modules: " + ", ".join(MODULES))
     print("Config dir: " + PIH_CONFIG_DIR)
     print("pih.config: " + PIH_CONFIG)
+    print("MySQL installation type: " + (MYSQL_INSTALLATION or "normal install"))
 
 
 load_env_vars()
@@ -313,6 +314,18 @@ def git_status(ctx):
 
 
 @task
+def run_sql_file(ctx, file_path, server=SERVER_NAME):
+    with open(file_path) as f:
+        file_text = f.read()
+    run_sql(ctx, file_text, server)
+
+
+@task
+def sql_shell(ctx, server=SERVER_NAME):
+    run_mysql_command(ctx, "", "-t", server)
+
+
+@task
 def enable_modules(ctx, server=SERVER_NAME):
     """Ensures that the mirebalais modules will be loaded on server startup"""
     sql_cmd = "update global_property set property_value='true' where property like '%started%';"
@@ -392,11 +405,7 @@ def in_each_directory(ctx, function, *args):
                 function(d, *args)
 
 
-def run_sql(ctx, sql_code, server=SERVER_NAME):
-    """Runs some SQL code as root user on the database `openmrs_<server>`.
-
-    `sql_code` must not contain double-quotes.
-    """
+def run_mysql_command(ctx, mysql_args, docker_args="", server=SERVER_NAME):
     root_pass_result = ctx.run(
         "grep connection.password ~/openmrs/"
         + server
@@ -405,8 +414,8 @@ def run_sql(ctx, sql_code, server=SERVER_NAME):
         hide=True,
     )
     root_pass = root_pass_result.stdout.strip()
-    command = "mysql -u root --password='{}' -e \"{}\" {}".format(
-        root_pass, sql_code, db_name(server)
+    command = "mysql -u root --password='{}' {} {}".format(
+        root_pass, mysql_args, db_name(server)
     )
 
     if MYSQL_INSTALLATION == "docker":
@@ -414,10 +423,22 @@ def run_sql(ctx, sql_code, server=SERVER_NAME):
             "docker ps | grep openmrs-sdk-mysql | cut -f1 -d' '", warn=False, hide=True
         )
         container_id = container_id_result.stdout.strip()
-        command = "docker exec {} {}".format(container_id, command)
+        command = "docker exec {} {} {}".format(docker_args, container_id, command)
 
     try:
         ctx.run(command, hide="stderr")
     except Failure as e:
         e.result.command = e.result.command.replace(root_pass, "<redacted>")
         print(e)
+        print(
+            "If the password is incorrect, please check connection.properties in openmrs-server.properties"
+        )
+
+
+def run_sql(ctx, sql_code, server=SERVER_NAME):
+    """Runs some SQL code as root user on the database.
+
+    `sql_code` must not contain double-quotes.
+    """
+    mysql_args = '-e "{}"'.format(sql_code)
+    run_mysql_command(ctx, mysql_args, "", server)
