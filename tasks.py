@@ -125,10 +125,12 @@ def setenv(ctx, env_suffix):
     e.g. `invoke setenv chiapas` runs `ln -sf .env.chiapas .env`
     """
     file_name = ".env." + env_suffix
+    if not os.path.isfile(os.path.join(BASE_PATH, file_name)):
+        print("ERROR: No such env: " + env_suffix)
+        print("  Try one of ")
+        ctx.run("ls .env*")
+        exit(1)
     with ctx.cd(BASE_PATH):
-        if not os.path.isfile(file_name):
-            print("ERROR: No such env: " + env_suffix)
-            exit(1)
         ctx.run("ln -sf " + file_name + " .env")
     load_env_vars()
 
