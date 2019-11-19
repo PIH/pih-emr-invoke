@@ -42,16 +42,18 @@ BASE_PATH = os.path.dirname(os.path.realpath(__file__))
 
 SERVER_NAME = None
 MODULES = None
+APP_DATA_CONFIG_DIR = None
 PIH_CONFIG_DIR = None
 PIH_CONFIG = None
 MYSQL_INSTALLATION = None
 
 
 def load_env_vars():
-    global SERVER_NAME, MODULES, PIH_CONFIG, PIH_CONFIG_DIR, MYSQL_INSTALLATION
+    global SERVER_NAME, MODULES, APP_DATA_CONFIG_DIR, PIH_CONFIG, PIH_CONFIG_DIR, MYSQL_INSTALLATION
     load_dotenv(find_dotenv(), override=True)
     SERVER_NAME = os.getenv("SERVER_NAME")
     MODULES = os.getenv("REPOS").split(",")
+    APP_DATA_CONFIG_DIR = os.getenv("APP_DATA_CONFIG_DIR")
     PIH_CONFIG_DIR = os.getenv("PIH_CONFIG_DIR")
     PIH_CONFIG = os.getenv("PIH_CONFIG")
     MYSQL_INSTALLATION = os.getenv("MYSQL_INSTALLATION")
@@ -64,6 +66,7 @@ def load_env_vars():
 def print_env_vars():
     print("Server: " + bcolors.BOLD + SERVER_NAME + bcolors.ENDC)
     print("Modules: " + ", ".join(MODULES))
+    print("App data dir: " + APP_DATA_CONFIG_DIR)
     print("Config dir: " + PIH_CONFIG_DIR)
     print("pih.config: " + PIH_CONFIG)
     print("MySQL installation type: " + (MYSQL_INSTALLATION or "normal install"))
@@ -156,6 +159,11 @@ def run(
         setenv(ctx, env)
         server = SERVER_NAME
     print_env_vars()
+    ctx.run(
+        "grep 'watched.projects=' ~/openmrs/{env}/openmrs-server.properties".format(
+            env=server
+        )
+    )
     print()
     input("Check the above, then press Enter to continue, or Ctrl-C to abort.")
     print()
@@ -181,7 +189,10 @@ def run(
 @task
 def setup(ctx, server=SERVER_NAME):
     """Runs mvn openmrs-sdk:setup with the appropriate arguments"""
-    pswd = getpass.getpass("database root password:")
+    if MYSQL_INSTALLATION == "docker":
+        pswd = "Admin123"
+    else:
+        pswd = getpass.getpass("database root password:")
     cmd = (
         "mvn openmrs-sdk:setup -DserverId=" + server + " "
         "-Ddistro=org.openmrs.module:mirebalais:1.2-SNAPSHOT "
@@ -194,6 +205,7 @@ def setup(ctx, server=SERVER_NAME):
     with ctx.cd(BASE_PATH):
         ctx.run(cmd)
     watch_all(ctx, server)
+    ctx.run("ln -s " + APP_DATA_CONFIG_DIR + "/* ~/openmrs/" + server + "/")
 
 
 @task
@@ -324,7 +336,7 @@ def run_sql_file(ctx, file_path, server=SERVER_NAME):
 
 @task
 def sql_shell(ctx, server=SERVER_NAME):
-    run_mysql_command(ctx, "", "-t", server)
+    run_mysql_command(ctx, "", "-it", server, pty=True)
 
 
 @task
@@ -407,7 +419,9 @@ def in_each_directory(ctx, function, *args):
                 function(d, *args)
 
 
-def run_mysql_command(ctx, mysql_args, docker_args="", server=SERVER_NAME):
+def run_mysql_command(
+    ctx, mysql_args, docker_args="", server=SERVER_NAME, **ctx_run_args
+):
     root_pass_result = ctx.run(
         "grep connection.password ~/openmrs/"
         + server
@@ -428,7 +442,7 @@ def run_mysql_command(ctx, mysql_args, docker_args="", server=SERVER_NAME):
         command = "docker exec {} {} {}".format(docker_args, container_id, command)
 
     try:
-        ctx.run(command, hide="stderr")
+        ctx.run(command, hide="stderr", **ctx_run_args)
     except Failure as e:
         e.result.command = e.result.command.replace(root_pass, "<redacted>")
         print(e)
