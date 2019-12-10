@@ -46,10 +46,11 @@ APP_DATA_CONFIG_DIR = None
 PIH_CONFIG_DIR = None
 PIH_CONFIG = None
 MYSQL_INSTALLATION = None
+DOCKER = False
 
 
 def load_env_vars():
-    global SERVER_NAME, MODULES, APP_DATA_CONFIG_DIR, PIH_CONFIG, PIH_CONFIG_DIR, MYSQL_INSTALLATION
+    global SERVER_NAME, MODULES, APP_DATA_CONFIG_DIR, PIH_CONFIG, PIH_CONFIG_DIR, MYSQL_INSTALLATION, DOCKER
     load_dotenv(find_dotenv(), override=True)
     SERVER_NAME = os.getenv("SERVER_NAME")
     MODULES = os.getenv("REPOS").split(",")
@@ -61,6 +62,10 @@ def load_env_vars():
         raise Exception(
             "Invalid environment variable MYSQL_INSTALLATION=" + MYSQL_INSTALLATION
         )
+    DOCKER = MYSQL_INSTALLATION == "docker"
+    if DOCKER:
+        # OpenMRS handles server name differently if mysql is dockerized
+        SERVER_NAME = db_name(SERVER_NAME)
 
 
 def print_env_vars():
@@ -72,14 +77,14 @@ def print_env_vars():
     print("MySQL installation type: " + (MYSQL_INSTALLATION or "normal install"))
 
 
-load_env_vars()
-
-
 def db_name(server_name):
     server_name_fixed = server_name.replace("-", "_")
-    if MYSQL_INSTALLATION == "docker":
+    if DOCKER:
         return server_name_fixed
     return "openmrs_" + server_name_fixed
+
+
+load_env_vars()
 
 
 # OpenMRS Tasks ###############################################################
@@ -189,7 +194,7 @@ def run(
 @task
 def setup(ctx, server=SERVER_NAME):
     """Runs mvn openmrs-sdk:setup with the appropriate arguments"""
-    if MYSQL_INSTALLATION == "docker":
+    if DOCKER:
         pswd = "Admin123"
     else:
         pswd = getpass.getpass("database root password:")
@@ -203,7 +208,7 @@ def setup(ctx, server=SERVER_NAME):
         + "'"
     )
     with ctx.cd(BASE_PATH):
-        ctx.run(cmd)
+        ctx.run(cmd, echo=True)
     watch_all(ctx, server)
     ctx.run("ln -s " + APP_DATA_CONFIG_DIR + "/* ~/openmrs/" + server + "/")
 
@@ -335,7 +340,7 @@ def run_sql_file(ctx, file_path, server=SERVER_NAME):
 
 
 @task
-def sql_shell(ctx, server=SERVER_NAME):
+def mysql_shell(ctx, server=SERVER_NAME):
     run_mysql_command(ctx, "", "-it", server, pty=True)
 
 
@@ -434,7 +439,7 @@ def run_mysql_command(
         root_pass, mysql_args, db_name(server)
     )
 
-    if MYSQL_INSTALLATION == "docker":
+    if DOCKER:
         container_id_result = ctx.run(
             "docker ps | grep openmrs-sdk-mysql | cut -f1 -d' '", warn=False, hide=True
         )
@@ -456,5 +461,5 @@ def run_sql(ctx, sql_code, server=SERVER_NAME):
 
     `sql_code` must not contain double-quotes.
     """
-    mysql_args = '-e "{}"'.format(sql_code)
+    mysql_args = '-e "{}" 2>&1'.format(sql_code)
     run_mysql_command(ctx, mysql_args, "", server)
