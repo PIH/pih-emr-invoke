@@ -195,17 +195,16 @@ def run(
 def setup(ctx, server=SERVER_NAME):
     """Runs mvn openmrs-sdk:setup with the appropriate arguments"""
     if DOCKER:
-        pswd = "Admin123"
+        root_pswd = "Admin123"
     else:
-        pswd = getpass.getpass("database root password:")
+        root_pswd = getpass.getpass("Database root password:")
     cmd = (
         "mvn openmrs-sdk:setup -DserverId=" + server + " "
         "-Ddistro=org.openmrs.module:mirebalais:1.2-SNAPSHOT "
         "-DdbUri=jdbc:mysql://localhost:3306/"
         + db_name(server)
-        + " -DdbUser=root -DdbPassword='"
-        + pswd
-        + "'"
+        + " -DdbPassword='" + root_pswd
+        + "' -e -X"
     )
     with ctx.cd(BASE_PATH):
         ctx.run(cmd, echo=True)
@@ -427,16 +426,24 @@ def in_each_directory(ctx, function, *args):
 def run_mysql_command(
     ctx, mysql_args, docker_args="", server=SERVER_NAME, **ctx_run_args
 ):
-    root_pass_result = ctx.run(
-        "grep connection.password ~/openmrs/"
+    user_result = ctx.run(
+        "grep connection.username ~/openmrs/"
         + server
-        + '/openmrs-server.properties | cut -f2 -d"="',
+        + '/openmrs-runtime.properties | cut -f2 -d"="',
         warn=False,
         hide=True,
     )
-    root_pass = root_pass_result.stdout.strip()
-    command = "mysql -u root --password='{}' {} {}".format(
-        root_pass, mysql_args, db_name(server)
+    pass_result = ctx.run(
+        "grep connection.password ~/openmrs/"
+        + server
+        + '/openmrs-runtime.properties | cut -f2 -d"="',
+        warn=False,
+        hide=True,
+    )
+    user = user_result.stdout.strip()
+    password = pass_result.stdout.strip()
+    command = "mysql -u {} --password='{}' {} {}".format(
+        user, password, mysql_args, db_name(server)
     )
 
     if DOCKER:
@@ -449,7 +456,7 @@ def run_mysql_command(
     try:
         ctx.run(command, hide="stderr", **ctx_run_args)
     except Failure as e:
-        e.result.command = e.result.command.replace(root_pass, "<redacted>")
+        e.result.command = e.result.command.replace(password, "<redacted>")
         print(e)
         print(
             "If the password is incorrect, please check connection.properties in openmrs-server.properties"
@@ -457,9 +464,10 @@ def run_mysql_command(
 
 
 def run_sql(ctx, sql_code, server=SERVER_NAME):
-    """Runs some SQL code as root user on the database.
+    """Runs some SQL code as root user on the database `openmrs_<server>`.
 
     `sql_code` must not contain double-quotes.
     """
     mysql_args = '-e "{}" 2>&1'.format(sql_code)
     run_mysql_command(ctx, mysql_args, "", server)
+
