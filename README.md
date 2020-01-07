@@ -91,19 +91,27 @@ Okay, you have a `.env` file? Let's continue then.
 
 ```
 invoke setup
-invoke run
+invoke run -sk
 ```
 
-Navigate to http://localhost:8080/openmrs (or whatever port, if you used a different port)
-
-ctrl-c out of the 'invoke run' when the database update completes
+Navigate to http://localhost:8080/openmrs (or whatever port, if you 
+used a different port). It will do some initial setup. In the end, 
+the logs will show a bunch of errors, but the UI will show that the 
+instance has been set up.  You should cancel the current run (Ctrl-C 
+in the terminal window).
 
 ```
 invoke configure
-invoke run
 ```
+And check that the utput looks okay. If so,
+```
+invoke run -sk
+```
+once again. Startup should take several minutes as it loads in all 
+required metadata, etc, for the first time.
 
-Then finally, navigate again to http://localhost:8080/openmrs/login.htm
+Future runs can be executed with `invoke run`, which automatically
+does a git pull, maven deploy, and enables all modules before running.
 
 ## The .env file
 
@@ -112,6 +120,7 @@ To set up the `.env` file, do `cp .env.sample .env.mysite` and then edit
 
 - `SERVER_NAME` is the OpenMRS SDK [serverId](https://wiki.openmrs.org/display/docs/OpenMRS+SDK+Step+By+Step+Tutorials). Write something lowercase with dashes, like `foo-bar`. The corresponding MySQL database will be `openmrs_foo_bar`.
 - `REPOS` should be a comma-separated list of the subdirectories of the current directory that you are working with. The ones that are git repositories will be used for all the `git-` Invoke commands. The ones that are OpenMRS modules will be used for all the Invoke commands that use Maven.
+- `APP_DATA_DIR` should be the path to the directory containing the application data directory configuration files, such as `configuration/addresshierarchy` or `frontend/`. It's probably `/path/to/mirebalais-puppet/mirebalais-modules/openmrs/files/app-data-config`.
 - `PIH_CONFIG_DIR` should be the path to the directory containing your PIH Config file. It's probably `/path/to/mirebalais-puppet/mirebalais-modules/openmrs/files/config`.
 - `PIH_CONFIG` is a comma-separated list of PIH Config files. See the files in the [PIH Config Directory](https://github.com/PIH/mirebalais-puppet/tree/master/mirebalais-modules/openmrs/files/config), and drop the `pih-config-` prefix and the `.json` suffix.
 - `MYSQL_INSTALLATION` should be set to `docker` if you are using openmrs-sdk-mysql for MySQL. Otherwise omit it.
