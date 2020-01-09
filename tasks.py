@@ -71,7 +71,8 @@ def load_env_vars():
 def print_env_vars():
     print("Server: " + bcolors.BOLD + SERVER_NAME + bcolors.ENDC)
     print("Modules: " + ", ".join(MODULES))
-    print("App data dir: " + APP_DATA_CONFIG_DIR)
+    if APP_DATA_CONFIG_DIR:
+        print("App data dir: " + APP_DATA_CONFIG_DIR)
     print("Config dir: " + PIH_CONFIG_DIR)
     print("pih.config: " + PIH_CONFIG)
     print("MySQL installation type: " + (MYSQL_INSTALLATION or "normal install"))
@@ -209,7 +210,8 @@ def setup(ctx, server=SERVER_NAME):
     with ctx.cd(BASE_PATH):
         ctx.run(cmd, echo=True)
     watch_all(ctx, server)
-    ctx.run("ln -s " + APP_DATA_CONFIG_DIR + "/* ~/openmrs/" + server + "/")
+    if APP_DATA_CONFIG_DIR:
+        ctx.run("ln -s " + APP_DATA_CONFIG_DIR + "/* ~/openmrs/" + server + "/")
 
 
 @task
