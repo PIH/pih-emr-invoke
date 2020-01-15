@@ -51,31 +51,30 @@ At this point we should create an `.env.*` file, which will define an OpenMRS
 working environment. Please see "[The .env file](#the-env-file)" below to finish
 setup. Once done, you should be able to run `invoke` commands.
 
-## First-time setup of OpenMRS on Ubuntu 16.04
+## First-time setup of OpenMRS on Ubuntu
 
-If you have a different version of Ubuntu you'll probably just have to jump through some
-hoops to get MySQL 5.6 installed. If you have a different OS, you should take
-these instructions as general guidance.
+I suggest [installing Docker](https://docs.docker.com/install/linux/docker-ce/ubuntu/)
+and using a dockerized MySQL (don't worry, the OpenMRS SDK will manage it all
+for you). Otherwise, you will need to install MySQL 5.6 (no other version will do).
 
 ```
 sudo add-apt-repository 'deb http://archive.ubuntu.com/ubuntu trusty universe'
 sudo apt-get update
 
+# Install Git, Java, Maven, and PyInvoke
 sudo apt install -y \
     build-essential \
     git \
     maven \
     openjdk-8-jdk \
     openjdk-8-jre \
-    mysql-server-5.6 \
-    mysql-client-5.6 \
     python-dev \
     python-invoke
 
-sudo service mysql start
-
+# Set up OpenMRS SDK
 mvn org.openmrs.maven.plugins:openmrs-sdk-maven-plugin:setup-sdk
 
+# Set up PIH EMR Invoke
 git clone git@github.com:brandones/pih-emr-workspace.git pihemr
 cd pihemr/
 git clone https://github.com/PIH/mirebalais-puppet.git
@@ -91,6 +90,12 @@ Okay, you have a `.env` file? Let's continue then.
 
 ```
 invoke setup
+```
+
+The only tricky question is which MySQL to use. If you're using docker, always
+pick (2), even if you already have a docker container.
+
+```
 invoke run -sk
 ```
 
