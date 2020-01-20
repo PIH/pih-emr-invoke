@@ -166,7 +166,7 @@ def run(
         server = SERVER_NAME
     print_env_vars()
     ctx.run(
-        "grep 'watched.projects=' ~/openmrs/{env}/openmrs-server.properties".format(
+        "ls ~/openmrs/{env}/watched-projects/ | grep -v pom.xml | tr '\n' ', ' | (echo -n 'Watched projects: ' && cat)".format(
             env=server
         )
     )
@@ -204,7 +204,8 @@ def setup(ctx, server=SERVER_NAME):
         "-Ddistro=org.openmrs.module:mirebalais:1.2-SNAPSHOT "
         "-DdbUri=jdbc:mysql://localhost:3306/"
         + db_name(server)
-        + " -DdbPassword='" + root_pswd
+        + " -DdbPassword='"
+        + root_pswd
         + "' -e -X"
     )
     with ctx.cd(BASE_PATH):
@@ -284,7 +285,7 @@ def git_pull(ctx):
 @task
 def git_push(ctx, branch_name, force=False):
     """Does `git push fork $(branch_name)` for each directory on branch `branch_name`.
-    
+
     Expects that there is a remote named 'fork'. Fork the repository you're interested in
     and do `git remote add fork $(my_fork_url)`.
     """
@@ -472,4 +473,3 @@ def run_sql(ctx, sql_code, server=SERVER_NAME):
     """
     mysql_args = '-e "{}" 2>&1'.format(sql_code)
     run_mysql_command(ctx, mysql_args, "", server)
-
