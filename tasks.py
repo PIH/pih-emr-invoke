@@ -450,6 +450,7 @@ def run_mysql_command(
     )
 
     if DOCKER:
+        start_mysql_docker_container(ctx)
         container_id_result = ctx.run(
             "docker ps | grep openmrs-sdk-mysql | cut -f1 -d' '", warn=False, hide=True
         )
@@ -473,3 +474,7 @@ def run_sql(ctx, sql_code, server=SERVER_NAME):
     """
     mysql_args = '-e "{}" 2>&1'.format(sql_code)
     run_mysql_command(ctx, mysql_args, "", server)
+
+
+def start_mysql_docker_container(ctx):
+    ctx.run("docker container start openmrs-sdk-mysql-v3-2")  # seems to be idempotent
