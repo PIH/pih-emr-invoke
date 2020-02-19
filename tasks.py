@@ -88,11 +88,11 @@ load_env_vars()
 
 
 @task
-def configure(ctx, server=SERVER_NAME):
+def configure(ctx):
     """Updates openmrs-runtime.properties, the configuration file, for the server.
     Sets the sites according to PIH_CONFIG.
     """
-    config_file = "~/openmrs/" + server + "/openmrs-runtime.properties"
+    config_file = "~/openmrs/" + SERVER_NAME + "/openmrs-runtime.properties"
     print("Initial config file:\n")
     ctx.run("cat " + config_file)
     new_lines = ["pih.config=" + PIH_CONFIG]
@@ -104,7 +104,7 @@ def configure(ctx, server=SERVER_NAME):
 
 
 @task
-def deploy(ctx, no_prompt=False, offline=False, server=SERVER_NAME):
+def deploy(ctx, no_prompt=False, offline=False):
     """Runs Maven deploy for Mirebalais. Updates dependencies."""
     with ctx.cd(BASE_PATH + "/openmrs-module-mirebalais"):
         cmd = (
@@ -113,7 +113,7 @@ def deploy(ctx, no_prompt=False, offline=False, server=SERVER_NAME):
             + " -Ddistro=api/src/main/resources/openmrs-distro.properties"
             + (" --offline" if offline else "")
             + " -U -DserverId="
-            + server
+            + SERVER_NAME
         )
         ctx.run(cmd)
 
@@ -142,8 +142,7 @@ def run(
     skip_pull=False,
     skip_deploy=False,
     skip_enable_modules=False,
-    env=None,
-    server=SERVER_NAME,
+    env=None
 ):
     """Pulls, deploys, enables modules, and then runs OpenMRS.
     Accepts default answers for openmrs-sdk:deploy.
@@ -154,27 +153,26 @@ def run(
     """
     if env:
         setenv(ctx, env)
-        server = SERVER_NAME
     print_env_vars()
     ctx.run(
         "ls ~/openmrs/{env}/watched-projects/ | grep -v pom.xml | tr '\n' ', ' | (echo -n 'Watched projects: ' && cat)".format(
-            env=server
+            env=SERVER_NAME
         )
     )
     print()
     input("Check the above, then press Enter to continue, or Ctrl-C to abort.")
     print()
     if not skip_enable_modules:
-        enable_modules(ctx, server)
+        enable_modules(ctx)
     if not skip_pull and not offline:
         git_pull(ctx)
     if not skip_deploy:
-        deploy(ctx, True, offline, server)
+        deploy(ctx, True, offline)
     cmd = (
         "mvn openmrs-sdk:run -e -X"
         + (" --offline" if offline else "")
         + " -DserverId="
-        + server
+        + SERVER_NAME
         + " | tee /dev/tty"
         + ' | awk -Winteractive \'/Starting ProtocolHandler/ { system("textme OpenMRS is ready") }'
         + '                      /Connect remote debugger/ { system("notify-send debugger") }\''
@@ -184,26 +182,26 @@ def run(
 
 
 @task
-def setup(ctx, server=SERVER_NAME):
+def setup(ctx):
     """Runs mvn openmrs-sdk:setup with the appropriate arguments"""
     if DOCKER:
         root_pswd = "Admin123"
     else:
         root_pswd = getpass.getpass("Database root password:")
     cmd = (
-        "mvn openmrs-sdk:setup -DserverId=" + server + " "
+        "mvn openmrs-sdk:setup -DserverId=" + SERVER_NAME + " "
         "-Ddistro=org.openmrs.module:mirebalais:1.2-SNAPSHOT "
         "-DdbUri=jdbc:mysql://localhost:3306/"
-        + db_name(server)
+        + db_name(SERVER_NAME)
         + " -DdbPassword='"
         + root_pswd
         + "' -e -X"
     )
     with ctx.cd(BASE_PATH):
         ctx.run(cmd, echo=True)
-    watch_all(ctx, server)
-    build_config(ctx, server)
-    link_config(ctx, server)
+    watch_all(ctx)
+    build_config(ctx)
+    link_config(ctx)
 
 
 @task
@@ -213,8 +211,8 @@ def build_config(ctx):
 
 
 @task
-def link_config(ctx, server=SERVER_NAME):
-    with ctx.cd("~/openmrs/" + server):
+def link_config(ctx):
+    with ctx.cd("~/openmrs/" + SERVER_NAME):
         ctx.run(
             "ln -s "
             + CONFIG_REPO_PATH
@@ -223,20 +221,20 @@ def link_config(ctx, server=SERVER_NAME):
 
 
 @task
-def watch(ctx, server=SERVER_NAME):
+def watch(ctx):
     """Runs mvn openmrs-sdk:watch in the current directory"""
-    cmd = "mvn openmrs-sdk:watch -DserverId=" + server
+    cmd = "mvn openmrs-sdk:watch -DserverId=" + SERVER_NAME
     ctx.run(cmd)
 
 
 @task
-def watch_all(ctx, server=SERVER_NAME):
+def watch_all(ctx):
     """Runs openrms-sdk:watch in each directory in REPOS"""
     with ctx.cd(BASE_PATH):
         for d in MODULES:
             if d.startswith("openmrs-module-"):
                 with ctx.cd(d):
-                    watch(ctx, server)
+                    watch(ctx)
 
 
 # Git Tasks ###################################################################
@@ -342,26 +340,26 @@ def git_status(ctx):
 
 
 @task
-def run_sql_file(ctx, file_path, server=SERVER_NAME):
+def run_sql_file(ctx, file_path):
     with open(file_path) as f:
         file_text = f.read()
-    run_sql(ctx, file_text, server)
+    run_sql(ctx, file_text)
 
 
 @task
-def mysql_shell(ctx, server=SERVER_NAME):
-    run_mysql_command(ctx, "", "-it", server, pty=True)
+def mysql_shell(ctx):
+    run_mysql_command(ctx, "", "-it", pty=True)
 
 
 @task
-def enable_modules(ctx, server=SERVER_NAME):
+def enable_modules(ctx):
     """Ensures that the mirebalais modules will be loaded on server startup"""
     sql_cmd = "update global_property set property_value='true' where property like '%started%';"
-    run_sql(ctx, sql_cmd, server)
+    run_sql(ctx, sql_cmd)
 
 
 @task
-def clear_address_hierarchy(ctx, server=SERVER_NAME):
+def clear_address_hierarchy(ctx):
     """Clears the MySQL tables for address hierarchy. Deletes the configuration checksum to ensure it gets reloaded."""
     sql_code = (
         "set foreign_key_checks=0; "
@@ -369,13 +367,13 @@ def clear_address_hierarchy(ctx, server=SERVER_NAME):
         "delete from address_hierarchy_entry; "
         "set foreign_key_checks=1; "
     )
-    run_sql(ctx, sql_code, server)
-    checksum_dir = "~/openmrs/" + server + "/configuration_checksums/"
+    run_sql(ctx, sql_code)
+    checksum_dir = "~/openmrs/" + SERVER_NAME + "/configuration_checksums/"
     ctx.run("rm -r " + checksum_dir)
 
 
 @task
-def clear_idgen(ctx, server=SERVER_NAME):
+def clear_idgen(ctx):
     """Clears the MySQL tables for idgen."""
     sql_code = (
         "set foreign_key_checks=0; "
@@ -389,11 +387,11 @@ def clear_idgen(ctx, server=SERVER_NAME):
         "delete from idgen_seq_id_gen; "
         "set foreign_key_checks=1; "
     )
-    run_sql(ctx, sql_code, server)
+    run_sql(ctx, sql_code)
 
 
 @task
-def clear_all_data(ctx, server=SERVER_NAME, num_persons_to_keep=2):
+def clear_all_data(ctx, num_persons_to_keep=2):
     """ Deletes all data (not metadata). """
     persons_id_string = ",".join([str(i) for i in range(1, num_persons_to_keep + 1)])
     sql_code = (
@@ -420,7 +418,7 @@ def clear_all_data(ctx, server=SERVER_NAME, num_persons_to_keep=2):
         "delete from notification_alert; "
         "set foreign_key_checks=1; "
     )
-    run_sql(ctx, sql_code, server)
+    run_sql(ctx, sql_code)
 
 
 # Utils #######################################################################
@@ -433,19 +431,17 @@ def in_each_directory(ctx, function, *args):
                 function(d, *args)
 
 
-def run_mysql_command(
-    ctx, mysql_args, docker_args="", server=SERVER_NAME, **ctx_run_args
-):
+def run_mysql_command(ctx, mysql_args, docker_args="", **ctx_run_args):
     user_result = ctx.run(
         "grep connection.username ~/openmrs/"
-        + server
+        + SERVER_NAME
         + '/openmrs-runtime.properties | cut -f2 -d"="',
         warn=False,
         hide=True,
     )
     pass_result = ctx.run(
         "grep connection.password ~/openmrs/"
-        + server
+        + SERVER_NAME
         + '/openmrs-runtime.properties | cut -f2 -d"="',
         warn=False,
         hide=True,
@@ -453,7 +449,7 @@ def run_mysql_command(
     user = user_result.stdout.strip()
     password = pass_result.stdout.strip()
     command = "mysql -u {} --password='{}' {} {}".format(
-        user, password, mysql_args, db_name(server)
+        user, password, mysql_args, db_name(SERVER_NAME)
     )
 
     if DOCKER:
@@ -474,13 +470,13 @@ def run_mysql_command(
         )
 
 
-def run_sql(ctx, sql_code, server=SERVER_NAME):
+def run_sql(ctx, sql_code):
     """Runs some SQL code as root user on the database `openmrs_<server>`.
 
     `sql_code` must not contain double-quotes.
     """
     mysql_args = '-e "{}" 2>&1'.format(sql_code)
-    run_mysql_command(ctx, mysql_args, "", server)
+    run_mysql_command(ctx, mysql_args, "")
 
 
 def start_mysql_docker_container(ctx):
