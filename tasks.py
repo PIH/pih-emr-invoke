@@ -42,20 +42,18 @@ BASE_PATH = os.path.dirname(os.path.realpath(__file__))
 
 SERVER_NAME = None
 MODULES = None
-APP_DATA_CONFIG_DIR = None
-PIH_CONFIG_DIR = None
+CONFIG_REPO_PATH = None
 PIH_CONFIG = None
 MYSQL_INSTALLATION = None
 DOCKER = False
 
 
 def load_env_vars():
-    global SERVER_NAME, MODULES, APP_DATA_CONFIG_DIR, PIH_CONFIG, PIH_CONFIG_DIR, MYSQL_INSTALLATION, DOCKER
+    global SERVER_NAME, MODULES, PIH_CONFIG, CONFIG_REPO_PATH, MYSQL_INSTALLATION, DOCKER
     load_dotenv(find_dotenv(), override=True)
     SERVER_NAME = os.getenv("SERVER_NAME")
     MODULES = os.getenv("REPOS").split(",")
-    APP_DATA_CONFIG_DIR = os.getenv("APP_DATA_CONFIG_DIR")
-    PIH_CONFIG_DIR = os.getenv("PIH_CONFIG_DIR")
+    CONFIG_REPO_PATH = os.getenv("CONFIG_REPO_PATH")
     PIH_CONFIG = os.getenv("PIH_CONFIG")
     MYSQL_INSTALLATION = os.getenv("MYSQL_INSTALLATION")
     if MYSQL_INSTALLATION not in (None, "", "docker"):
@@ -71,9 +69,7 @@ def load_env_vars():
 def print_env_vars():
     print("Server: " + bcolors.BOLD + SERVER_NAME + bcolors.ENDC)
     print("Modules: " + ", ".join(MODULES))
-    if APP_DATA_CONFIG_DIR:
-        print("App data dir: " + APP_DATA_CONFIG_DIR)
-    print("Config dir: " + PIH_CONFIG_DIR)
+    print("Config repo: " + CONFIG_REPO_PATH)
     print("pih.config: " + PIH_CONFIG)
     print("MySQL installation type: " + (MYSQL_INSTALLATION or "normal install"))
 
@@ -94,17 +90,12 @@ load_env_vars()
 @task
 def configure(ctx, server=SERVER_NAME):
     """Updates openmrs-runtime.properties, the configuration file, for the server.
-    Sets the sites to mexico, mexico-salvador.
+    Sets the sites according to PIH_CONFIG.
     """
     config_file = "~/openmrs/" + server + "/openmrs-runtime.properties"
-    print("Starting config file:\n")
+    print("Initial config file:\n")
     ctx.run("cat " + config_file)
-    print(
-        "\n\nThe following should be a bunch of JSON files. If it's not, the "
-        "pih config dir path is wrong and you need to edit this code."
-    )
-    ctx.run("ls " + PIH_CONFIG_DIR)
-    new_lines = ["pih.config=" + PIH_CONFIG, "pih.config.dir=" + PIH_CONFIG_DIR]
+    new_lines = ["pih.config=" + PIH_CONFIG]
     cmds = ["echo '{}' >> {}".format(l, config_file) for l in new_lines]
     for cmd in cmds:
         ctx.run(cmd)
@@ -211,8 +202,24 @@ def setup(ctx, server=SERVER_NAME):
     with ctx.cd(BASE_PATH):
         ctx.run(cmd, echo=True)
     watch_all(ctx, server)
-    if APP_DATA_CONFIG_DIR:
-        ctx.run("ln -s " + APP_DATA_CONFIG_DIR + "/* ~/openmrs/" + server + "/")
+    build_config(ctx, server)
+    link_config(ctx, server)
+
+
+@task
+def build_config(ctx):
+    with ctx.cd(CONFIG_REPO_PATH):
+        ctx.run("mvn clean compile")
+
+
+@task
+def link_config(ctx, server=SERVER_NAME):
+    with ctx.cd("~/openmrs/" + server):
+        ctx.run(
+            "ln -s "
+            + CONFIG_REPO_PATH
+            + "/target/openmrs-packager-config/configuration ."
+        )
 
 
 @task
