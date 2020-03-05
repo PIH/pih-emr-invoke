@@ -142,7 +142,7 @@ def run(
     skip_pull=False,
     skip_deploy=False,
     skip_enable_modules=False,
-    env=None
+    env=None,
 ):
     """Pulls, deploys, enables modules, and then runs OpenMRS.
     Accepts default answers for openmrs-sdk:deploy.
@@ -168,6 +168,7 @@ def run(
         git_pull(ctx)
     if not skip_deploy:
         deploy(ctx, True, offline)
+    build_config(ctx)
     cmd = (
         "mvn openmrs-sdk:run -e -X"
         + (" --offline" if offline else "")
