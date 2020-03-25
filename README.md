@@ -4,8 +4,7 @@ This is a [PyInvoke](https://www.pyinvoke.org/) program that facilitates working
 with OpenMRS. It helps with setup, running, and git management of multiple
 repositories.
 
-This repository should be the parent directory of all of your OpenMRS
-directories. Please see the "Setup" section appropriate to your situation, whether
+Please see the "Setup" section appropriate to your situation, whether
 you need to set up PIH EMR or you just want to use this with an existing
 setup.
 
@@ -31,8 +30,9 @@ These are the instructions for people who already have modules checked out and
 servers set up. If you're new to OpenMRS / PIH-EMR, please see the instructions
 below under "First-time setup."
 
-Assuming the parent directory of your OpenMRS directories is not yet a git
-repository, `cd` to that directory and do
+This repository should be the parent directory of all of your OpenMRS
+project directories. Assuming the parent directory of your OpenMRS directories
+is not yet a git repository, `cd` to that directory and do
 
 ```
 git init
@@ -75,7 +75,7 @@ sudo apt install -y \
 mvn org.openmrs.maven.plugins:openmrs-sdk-maven-plugin:setup-sdk
 
 # Set up PIH EMR Invoke
-git clone git@github.com:brandones/pih-emr-workspace.git pihemr
+git clone git@github.com:pih/pih-emr-invoke.git pihemr
 cd pihemr/
 git clone https://github.com/PIH/mirebalais-puppet.git
 ```
@@ -125,8 +125,7 @@ To set up the `.env` file, do `cp .env.sample .env.mysite` and then edit
 
 - `SERVER_NAME` is the OpenMRS SDK [serverId](https://wiki.openmrs.org/display/docs/OpenMRS+SDK+Step+By+Step+Tutorials). Write something lowercase with dashes, like `foo-bar`. The corresponding MySQL database will be `openmrs_foo_bar`.
 - `REPOS` should be a comma-separated list of the subdirectories of the current directory that you are working with. The ones that are git repositories will be used for all the `git-` Invoke commands. The ones that are OpenMRS modules will be used for all the Invoke commands that use Maven.
-- `APP_DATA_DIR` should be the path to the directory containing the application data directory configuration files, such as `configuration/addresshierarchy` or `frontend/`. It's probably `/path/to/mirebalais-puppet/mirebalais-modules/openmrs/files/app-data-config`.
-- `PIH_CONFIG_DIR` should be the path to the directory containing your PIH Config file. It's probably `/path/to/mirebalais-puppet/mirebalais-modules/openmrs/files/config`.
+- `CONFIG_REPO_DIR` should be the path to the [configuration repository](https://github.com/PIH/openmrs-config-pihemr/) for the server.
 - `PIH_CONFIG` is a comma-separated list of PIH Config files. See the files in the [PIH Config Directory](https://github.com/PIH/mirebalais-puppet/tree/master/mirebalais-modules/openmrs/files/config), and drop the `pih-config-` prefix and the `.json` suffix.
 - `MYSQL_INSTALLATION` should be set to `docker` if you are using openmrs-sdk-mysql for MySQL. Otherwise omit it.
 
