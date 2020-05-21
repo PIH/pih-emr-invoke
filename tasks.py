@@ -160,6 +160,8 @@ def run(
         )
     )
     print()
+    git_status(ctx)
+    print()
     input("Check the above, then press Enter to continue, or Ctrl-C to abort.")
     print()
     if not skip_enable_modules:
