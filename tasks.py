@@ -224,20 +224,14 @@ def link_config(ctx):
 
 
 @task
-def watch(ctx):
-    """Runs mvn openmrs-sdk:watch in the current directory"""
-    cmd = "mvn openmrs-sdk:watch -DserverId=" + SERVER_NAME
-    ctx.run(cmd)
-
-
-@task
 def watch_all(ctx):
     """Runs openrms-sdk:watch in each directory in REPOS"""
     with ctx.cd(BASE_PATH):
         for d in MODULES:
             if d.startswith("openmrs-module-"):
                 with ctx.cd(d):
-                    watch(ctx)
+                    cmd = "mvn openmrs-sdk:watch -DserverId=" + SERVER_NAME
+                    ctx.run(cmd)
 
 
 # Git Tasks ###################################################################
