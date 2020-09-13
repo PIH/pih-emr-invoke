@@ -52,7 +52,7 @@ def load_env_vars():
     global SERVER_NAME, MODULES, PIH_CONFIG, CONFIG_REPO_PATH, MYSQL_INSTALLATION, DOCKER
     load_dotenv(find_dotenv(), override=True)
     SERVER_NAME = os.getenv("SERVER_NAME")
-    MODULES = os.getenv("REPOS").split(",")
+    MODULES = (os.getenv("REPOS") or "").split(",")
     CONFIG_REPO_PATH = os.getenv("CONFIG_REPO_PATH")
     PIH_CONFIG = os.getenv("PIH_CONFIG")
     MYSQL_INSTALLATION = os.getenv("MYSQL_INSTALLATION")
