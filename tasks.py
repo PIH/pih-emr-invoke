@@ -210,7 +210,7 @@ def setup(ctx):
 @task
 def build_config(ctx):
     with ctx.cd(CONFIG_REPO_PATH):
-        ctx.run("mvn clean compile")
+        ctx.run("./install.sh " + SERVER_NAME)
 
 
 @task
