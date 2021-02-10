@@ -22,6 +22,7 @@ import os
 from pprint import pprint
 from functools import partial
 from time import sleep
+import subprocess
 
 from dotenv import load_dotenv, find_dotenv
 from invoke import task, watchers, Failure
@@ -41,19 +42,28 @@ class bcolors:
 BASE_PATH = os.path.dirname(os.path.realpath(__file__))
 
 SERVER_NAME = None
-MODULES = None
 CONFIG_REPO_PATH = None
 PIH_CONFIG = None
 MYSQL_INSTALLATION = None
 DOCKER = False
+MODULES = (
+    []
+)  # an array of 3-tuples like ['org.openmrs.module', 'pihcore', '/path/to/openmrs-module-pihcore']
+OTHER_REPOS = []
 
 
 def load_env_vars():
-    global SERVER_NAME, MODULES, PIH_CONFIG, CONFIG_REPO_PATH, MYSQL_INSTALLATION, DOCKER
+    global SERVER_NAME, PIH_CONFIG, CONFIG_REPO_PATH, MYSQL_INSTALLATION, DOCKER, MODULES, OTHER_REPOS
     load_dotenv(find_dotenv(), override=True)
     SERVER_NAME = os.getenv("SERVER_NAME")
-    MODULES = (os.getenv("REPOS") or "").split(",")
-    CONFIG_REPO_PATH = os.getenv("CONFIG_REPO_PATH")
+    CONFIG_REPO_PATH = os.path.abspath(
+        os.getenv("CONFIG_REPO") or os.getenv("CONFIG_REPO_PATH")
+    )
+    OTHER_REPOS = [
+        os.path.abspath(r)
+        for r in (os.getenv("OTHER_REPOS") or os.getenv("REPOS") or "").split(",")
+        if r
+    ]
     PIH_CONFIG = os.getenv("PIH_CONFIG")
     MYSQL_INSTALLATION = os.getenv("MYSQL_INSTALLATION")
     if MYSQL_INSTALLATION not in (None, "", "docker"):
@@ -64,12 +74,29 @@ def load_env_vars():
     if DOCKER:
         # OpenMRS handles server name differently if mysql is dockerized
         SERVER_NAME = db_name(SERVER_NAME)
+    MODULES = [
+        m.split(",")
+        for m in subprocess.Popen(
+            [
+                "cat ~/openmrs/{env}/openmrs-server.properties | grep watched.projects".format(
+                    env=SERVER_NAME
+                )
+            ],
+            shell=True,
+            stdout=subprocess.PIPE,
+        )
+        .communicate()[0]
+        .strip()
+        .split("=")[1]
+        .split(";")
+    ]
 
 
 def print_env_vars():
     print("Server: " + bcolors.BOLD + SERVER_NAME + bcolors.ENDC)
-    print("Modules: " + ", ".join(MODULES))
+    print("Watched modules: " + ", ".join([m[1] for m in MODULES]))
     print("Config repo: " + CONFIG_REPO_PATH)
+    print("Other repos: " + ", ".join(OTHER_REPOS))
     print("pih.config: " + PIH_CONFIG)
     print("MySQL installation type: " + (MYSQL_INSTALLATION or "normal install"))
 
@@ -154,11 +181,6 @@ def run(
     if env:
         setenv(ctx, env)
     print_env_vars()
-    ctx.run(
-        "ls ~/openmrs/{env}/watched-projects/ | grep -v pom.xml | tr '\n' ', ' | (echo -n 'Watched projects: ' && cat)".format(
-            env=SERVER_NAME
-        )
-    )
     print()
     git_status(ctx)
     print()
@@ -202,7 +224,6 @@ def setup(ctx):
     )
     with ctx.cd(BASE_PATH):
         ctx.run(cmd, echo=True)
-    watch_all(ctx)
     build_config(ctx)
     link_config(ctx)
 
@@ -217,21 +238,10 @@ def build_config(ctx):
 def link_config(ctx):
     with ctx.cd("~/openmrs/" + SERVER_NAME):
         ctx.run(
-            "ln -s "
+            " ln -s "
             + CONFIG_REPO_PATH
-            + "/target/openmrs-packager-config/configuration ."
+            + "/target/openmrs-packager-config/configuration . || exit 0"
         )
-
-
-@task
-def watch_all(ctx):
-    """Runs openrms-sdk:watch in each directory in REPOS"""
-    with ctx.cd(BASE_PATH):
-        for d in MODULES:
-            if d.startswith("openmrs-module-"):
-                with ctx.cd(d):
-                    cmd = "mvn openmrs-sdk:watch -DserverId=" + SERVER_NAME
-                    ctx.run(cmd)
 
 
 # Git Tasks ###################################################################
@@ -307,27 +317,24 @@ def git_push(ctx, branch_name, force=False):
 
 @task
 def git_status(ctx):
-    """Shows server name and brief git status information for each directory.
-
-    Ignores directories that are on master and have no changes."""
+    """Shows server name and brief git status information for each directory."""
 
     def fcn(d):
         branch = ctx.run("git rev-parse --abbrev-ref HEAD", hide=True).stdout.strip()
         changes = ctx.run("git status -s -uno", hide=True).stdout
-        if branch != "master" or changes:
-            print(
-                bcolors.BOLD
-                + d
-                + bcolors.ENDC
-                + ": "
-                + bcolors.OKBLUE
-                + branch
-                + bcolors.ENDC
-            )
-            if changes:
-                print(bcolors.HEADER, end="")
-                print(changes, end="")
-                print(bcolors.ENDC, end="")
+        print(
+            bcolors.BOLD
+            + d.split("/")[-1]
+            + bcolors.ENDC
+            + ": "
+            + bcolors.OKBLUE
+            + branch
+            + bcolors.ENDC
+        )
+        if changes:
+            print(bcolors.HEADER, end="")
+            print(changes, end="")
+            print(bcolors.ENDC, end="")
 
     print("Server: " + SERVER_NAME)
     in_each_directory(ctx, fcn)
@@ -423,7 +430,9 @@ def clear_all_data(ctx, num_persons_to_keep=2):
 
 def in_each_directory(ctx, function, *args):
     with ctx.cd(BASE_PATH):
-        for d in MODULES:
+        for d in sorted(
+            set([m[2] for m in MODULES] + OTHER_REPOS + [CONFIG_REPO_PATH])
+        ):
             with ctx.cd(d):
                 function(d, *args)
 
