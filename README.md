@@ -127,7 +127,7 @@ To set up the `.env` file, do `cp .env.sample .env.mysite` and then edit
 
 - `SERVER_NAME` is the OpenMRS SDK [serverId](https://wiki.openmrs.org/display/docs/OpenMRS+SDK+Step+By+Step+Tutorials). Write something lowercase with dashes, like `foo-bar`. The corresponding MySQL database will be `openmrs_foo_bar`.
 - `CONFIG_REPO` should be the path to the [configuration repository](https://github.com/PIH/openmrs-config-pihemr/) for the server.
-- `OTHER_REPOS` should be a comma-separated list of any repositories that are neither the CONFIG_REPO nor are watched modules.
+- `OTHER_REPOS` should be a comma-separated list of any repositories that are neither the `CONFIG_REPO` nor are watched modules, but which you'd like included in the git commands for this server. If your config repository depends on another config repository, this is a good place to put that.
 - `PIH_CONFIG` is a comma-separated list of PIH Config files. See the files in the [PIH Config Directory](https://github.com/PIH/mirebalais-puppet/tree/master/mirebalais-modules/openmrs/files/config), and drop the `pih-config-` prefix and the `.json` suffix.
 - `MYSQL_INSTALLATION` should be set to `docker` if you are using openmrs-sdk-mysql for MySQL. Otherwise omit it.
 
