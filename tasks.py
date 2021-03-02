@@ -56,11 +56,13 @@ def load_env_vars():
     global SERVER_NAME, PIH_CONFIG, CONFIG_REPO_PATH, MYSQL_INSTALLATION, DOCKER, MODULES, OTHER_REPOS
     load_dotenv(find_dotenv(), override=True)
     SERVER_NAME = os.getenv("SERVER_NAME")
-    CONFIG_REPO_PATH = os.path.abspath(
-        os.getenv("CONFIG_REPO") or os.getenv("CONFIG_REPO_PATH")
+    CONFIG_REPO_PATH = os.path.normpath(
+        os.path.join(
+            BASE_PATH, os.getenv("CONFIG_REPO") or os.getenv("CONFIG_REPO_PATH")
+        )
     )
     OTHER_REPOS = [
-        os.path.abspath(r)
+        os.path.normpath(os.path.join(BASE_PATH, r))
         for r in (os.getenv("OTHER_REPOS") or os.getenv("REPOS") or "").split(",")
         if r
     ]
@@ -428,11 +430,13 @@ def clear_all_data(ctx, num_persons_to_keep=2):
 # Utils #######################################################################
 
 
+def all_repos():
+    return sorted(set([m[2] for m in MODULES] + OTHER_REPOS + [CONFIG_REPO_PATH]))
+
+
 def in_each_directory(ctx, function, *args):
     with ctx.cd(BASE_PATH):
-        for d in sorted(
-            set([m[2] for m in MODULES] + OTHER_REPOS + [CONFIG_REPO_PATH])
-        ):
+        for d in all_repos():
             with ctx.cd(d):
                 function(d, *args)
 
