@@ -76,22 +76,23 @@ def load_env_vars():
     if DOCKER:
         # OpenMRS handles server name differently if mysql is dockerized
         SERVER_NAME = db_name(SERVER_NAME)
-    MODULES = [
-        m.split(",")
-        for m in subprocess.Popen(
-            [
-                "cat ~/openmrs/{env}/openmrs-server.properties | grep watched.projects".format(
-                    env=SERVER_NAME
-                )
-            ],
-            shell=True,
-            stdout=subprocess.PIPE,
-        )
-        .communicate()[0]
-        .strip()
-        .split("=")[1]
-        .split(";")
-    ]
+    if os.path.exists(os.path.expanduser("~/openmrs/") + SERVER_NAME):
+        MODULES = [
+            m.split(",")
+            for m in subprocess.Popen(
+                [
+                    "cat ~/openmrs/{env}/openmrs-server.properties | grep watched.projects".format(
+                        env=SERVER_NAME
+                    )
+                ],
+                shell=True,
+                stdout=subprocess.PIPE,
+            )
+            .communicate()[0]
+            .strip()
+            .split("=")[1]
+            .split(";")
+        ]
 
 
 def print_env_vars():
@@ -227,23 +228,12 @@ def setup(ctx):
     with ctx.cd(BASE_PATH):
         ctx.run(cmd, echo=True)
     build_config(ctx)
-    link_config(ctx)
 
 
 @task
 def build_config(ctx):
     with ctx.cd(CONFIG_REPO_PATH):
         ctx.run("./install.sh " + SERVER_NAME)
-
-
-@task
-def link_config(ctx):
-    with ctx.cd("~/openmrs/" + SERVER_NAME):
-        ctx.run(
-            " ln -s "
-            + CONFIG_REPO_PATH
-            + "/target/openmrs-packager-config/configuration . || exit 0"
-        )
 
 
 # Git Tasks ###################################################################
