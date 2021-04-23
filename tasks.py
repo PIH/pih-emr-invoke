@@ -76,23 +76,24 @@ def load_env_vars():
     if DOCKER:
         # OpenMRS handles server name differently if mysql is dockerized
         SERVER_NAME = db_name(SERVER_NAME)
-    if os.path.exists(os.path.expanduser("~/openmrs/") + SERVER_NAME):
-        MODULES = [
-            m.split(",")
-            for m in subprocess.Popen(
-                [
-                    "cat ~/openmrs/{env}/openmrs-server.properties | grep watched.projects".format(
-                        env=SERVER_NAME
-                    )
-                ],
-                shell=True,
-                stdout=subprocess.PIPE,
-            )
-            .communicate()[0]
-            .strip()
-            .split("=")[1]
-            .split(";")
-        ]
+    if os.path.exists(
+        os.path.expanduser("~/openmrs/") + SERVER_NAME + "/openmrs-server.properties"
+    ):
+        watched_projects_line = subprocess.Popen(
+            [
+                "cat ~/openmrs/{env}/openmrs-server.properties | grep watched.projects".format(
+                    env=SERVER_NAME
+                )
+            ],
+            shell=True,
+            stdout=subprocess.PIPE,
+        ).communicate()[0]
+
+        if watched_projects_line:
+            MODULES = [
+                m.split(",")
+                for m in watched_projects_line.strip().split("=")[1].split(";")
+            ]
 
 
 def print_env_vars():
@@ -463,7 +464,8 @@ def run_mysql_command(ctx, mysql_args, docker_args="", **ctx_run_args):
     try:
         ctx.run(command, hide="stderr", **ctx_run_args)
     except Failure as e:
-        e.result.command = e.result.command.replace(password, "<redacted>")
+        if password:
+            e.result.command = e.result.command.replace(password, "<redacted>")
         print(e)
         print(
             "If the password is incorrect, please check connection.properties in openmrs-server.properties"
