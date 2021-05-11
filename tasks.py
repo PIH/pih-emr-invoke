@@ -126,7 +126,8 @@ def configure(ctx):
     config_file = "~/openmrs/" + SERVER_NAME + "/openmrs-runtime.properties"
     print("Initial config file:\n")
     ctx.run("cat " + config_file)
-    new_lines = ["pih.config=" + PIH_CONFIG]
+    new_lines = ["pih.config=" + PIH_CONFIG,
+                 "initializer.domains=!programs,programworkflows,programworkflowstates,drugs"]
     cmds = ["echo '{}' >> {}".format(l, config_file) for l in new_lines]
     for cmd in cmds:
         ctx.run(cmd)
