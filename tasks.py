@@ -93,6 +93,7 @@ def load_env_vars():
             MODULES = [
                 m.split(",")
                 for m in watched_projects_line.strip().split("=")[1].split(";")
+                if m
             ]
 
 
@@ -126,8 +127,10 @@ def configure(ctx):
     config_file = "~/openmrs/" + SERVER_NAME + "/openmrs-runtime.properties"
     print("Initial config file:\n")
     ctx.run("cat " + config_file)
-    new_lines = ["pih.config=" + PIH_CONFIG,
-                 "initializer.domains=!programs,programworkflows,programworkflowstates,drugs"]
+    new_lines = [
+        "pih.config=" + PIH_CONFIG,
+        "initializer.domains=!programs,programworkflows,programworkflowstates,drugs",
+    ]
     cmds = ["echo '{}' >> {}".format(l, config_file) for l in new_lines]
     for cmd in cmds:
         ctx.run(cmd)
@@ -142,9 +145,9 @@ def deploy(ctx, no_prompt=False, offline=False):
         cmd = (
             ("yes | " if no_prompt else "")
             + "mvn openmrs-sdk:deploy"
-            + " -Ddistro=api/src/main/resources/openmrs-distro.properties"
+            + " -Ddistro=distro/openmrs-distro.properties"
             + (" --offline" if offline else "")
-            + " -U -DserverId="
+            + " -U -e -X -DserverId="
             + SERVER_NAME
         )
         ctx.run(cmd)
