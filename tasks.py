@@ -223,7 +223,7 @@ def setup(ctx):
         root_pswd = getpass.getpass("Database root password:")
     cmd = (
         "mvn openmrs-sdk:setup -DserverId=" + SERVER_NAME + " "
-        "-Ddistro=org.openmrs.module:mirebalais:1.2-SNAPSHOT "
+        "-Ddistro=org.openmrs.distro:pihemr:1.3.0-SNAPSHOT "
         "-DdbUri=jdbc:mysql://localhost:3306/"
         + db_name(SERVER_NAME)
         + " -DdbPassword='"
