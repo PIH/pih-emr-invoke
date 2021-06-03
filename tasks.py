@@ -129,7 +129,7 @@ def configure(ctx):
     ctx.run("cat " + config_file)
     new_lines = [
         "pih.config=" + PIH_CONFIG,
-        "initializer.domains=!programs,programworkflows,programworkflowstates,drugs",
+        "initializer.startup.load=disabled"
     ]
     cmds = ["echo '{}' >> {}".format(l, config_file) for l in new_lines]
     for cmd in cmds:
