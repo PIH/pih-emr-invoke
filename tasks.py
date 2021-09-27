@@ -283,7 +283,7 @@ def git_pull(ctx):
         print("On branch " + branch)
         if branch == "master":
             print("Pulling...")
-            ctx.run("git pull")
+            ctx.run("git pull --no-rebase --autostash")
         else:
             print("Fetching...")
             ctx.run("git fetch")
