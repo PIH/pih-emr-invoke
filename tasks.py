@@ -120,32 +120,13 @@ load_env_vars()
 
 
 @task
-def configure(ctx):
-    """Updates openmrs-runtime.properties, the configuration file, for the server.
-    Sets the sites according to PIH_CONFIG.
-    """
-    config_file = "~/openmrs/" + SERVER_NAME + "/openmrs-runtime.properties"
-    print("Initial config file:\n")
-    ctx.run("cat " + config_file)
-    new_lines = [
-        "pih.config=" + PIH_CONFIG,
-        "initializer.startup.load=disabled"
-    ]
-    cmds = ["echo '{}' >> {}".format(l, config_file) for l in new_lines]
-    for cmd in cmds:
-        ctx.run(cmd)
-    print("\n\nUpdated config file:\n")
-    ctx.run("cat " + config_file)
-
-
-@task
 def deploy(ctx, no_prompt=False, offline=False):
-    """Runs Maven deploy for Mirebalais. Updates dependencies."""
-    with ctx.cd(BASE_PATH + "/openmrs-module-mirebalais"):
+    """Runs Maven deploy for PIH EMR. Updates dependencies."""
+    with ctx.cd(BASE_PATH + "/openmrs-distro-pihemr"):
         cmd = (
             ("yes | " if no_prompt else "")
             + "mvn openmrs-sdk:deploy"
-            + " -Ddistro=distro/openmrs-distro.properties"
+            + " -Ddistro=openmrs-distro.properties"
             + (" --offline" if offline else "")
             + " -U -e -X -DserverId="
             + SERVER_NAME
@@ -222,9 +203,11 @@ def setup(ctx):
     else:
         root_pswd = getpass.getpass("Database root password:")
     cmd = (
-        "mvn openmrs-sdk:setup -DserverId=" + SERVER_NAME + " "
-        "-Ddistro=org.openmrs.distro:pihemr:1.3.0-SNAPSHOT "
-        "-DdbUri=jdbc:mysql://localhost:3306/"
+        "mvn openmrs-sdk:setup " + "-DserverId=" + SERVER_NAME + " "
+        "-Ddistro=org.openmrs.distro:pihemr:1.4.0-SNAPSHOT "
+        "-Dpih.config="
+        + PIH_CONFIG
+        + " -DdbUri=jdbc:mysql://localhost:3306/"
         + db_name(SERVER_NAME)
         + " -DdbPassword='"
         + root_pswd
@@ -354,7 +337,7 @@ def mysql_shell(ctx):
 
 @task
 def enable_modules(ctx):
-    """Ensures that the mirebalais modules will be loaded on server startup"""
+    """Ensures that all modules will be loaded on server startup"""
     sql_cmd = "update global_property set property_value='true' where property like '%started%';"
     run_sql(ctx, sql_cmd)
 
@@ -393,7 +376,7 @@ def clear_idgen(ctx):
 
 @task
 def clear_all_data(ctx, num_persons_to_keep=2):
-    """ Deletes all data (not metadata). """
+    """Deletes all data (not metadata)."""
     persons_id_string = ",".join([str(i) for i in range(1, num_persons_to_keep + 1)])
     sql_code = (
         "set foreign_key_checks=0; "
