@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 This is an Invoke file. https://www.pyinvoke.org/
 
@@ -87,6 +87,7 @@ def load_env_vars():
             ],
             shell=True,
             stdout=subprocess.PIPE,
+            encoding='UTF-8',
         ).communicate()[0]
 
         if watched_projects_line:
